@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이벤트 참가자 등록 및 추첨</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: #f5f5f0;
+    color: #2c2c2a;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e5e0;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888780; margin-bottom: 16px; }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f9f8f3;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #5f5e5a;
+    margin-bottom: 20px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #b4b2a9;
+  }
+  .status-dot.connected { background: #1d9e75; }
+  .status-dot.error { background: #d85a30; }
+
+  .setup-box {
+    background: #fef9e7;
+    border: 1px solid #f4d03f;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #854F0B;
+  }
+  .setup-box strong { display: block; margin-bottom: 6px; font-size: 14px; }
+  .setup-box ol { margin-left: 18px; margin-top: 8px; }
+  .setup-box li { margin-bottom: 4px; }
+  .setup-box code {
+    background: #ffffff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: Menlo, Monaco, monospace;
+    font-size: 12px;
+  }
+
+  .mode-switch {
+    display: flex;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .mode-switch button {
+    flex: 1;
+    border: none;
+    border-radius: 0;
+    background: #ffffff;
+    font-size: 13px;
+    padding: 10px;
+    color: #2c2c2a;
+    cursor: pointer;
+  }
+  .mode-switch button.active {
+    background: #2c2c2a;
+    color: #ffffff;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #e5e5e0;
+  }
+  .tab-btn {
+    background: transparent; border: none;
+    padding: 10px 16px;
+    font-size: 14px; font-weight: 400;
+    color: #888780;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .tab-btn.active {
+    color: #2c2c2a;
+    font-weight: 500;
+    border-bottom-color: #2c2c2a;
+  }
+  .count-badge {
+    background: #f1efe8;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 4px;
+    color: #5f5e5a;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .form-box {
+    background: #f9f8f3;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .form-desc { font-size: 13px; color: #888780; margin-bottom: 14px; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label {
+    font-size: 13px; color: #5f5e5a;
+    display: block; margin-bottom: 4px;
+  }
+  .required { color: #d85a30; }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    background: #ffffff;
+    font-family: inherit;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    outline: none; border-color: #888780;
+  }
+  input[type="range"] {
+    flex: 1; height: 4px;
+    -webkit-appearance: none; appearance: none;
+    background: #d3d1c7;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px;
+    background: #2c2c2a;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  button {
+    padding: 10px 16px;
+    font-size: 14px;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #2c2c2a;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #f9f8f3; }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary {
+    background: #2c2c2a; color: #ffffff;
+    border-color: #2c2c2a;
+    font-weight: 500;
+    width: 100%;
+  }
+  .btn-primary:hover { background: #444441; }
+  .btn-danger { color: #d85a30; }
+
+  .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .msg.success { color: #1d9e75; }
+  .msg.error { color: #d85a30; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 16px;
+    color: #b4b2a9;
+    font-size: 14px;
+  }
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .participant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 450px;
+    overflow-y: auto;
+  }
+  .participant-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+  }
+  .participant-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #f1efe8;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #5f5e5a;
+    flex-shrink: 0;
+  }
+  .participant-info { flex: 1; min-width: 0; }
+  .participant-name {
+    font-size: 14px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .participant-org {
+    font-weight: 400; color: #b4b2a9;
+    font-size: 12px; margin-left: 4px;
+  }
+  .participant-meta { font-size: 12px; color: #888780; margin-top: 2px; }
+
+  .slider-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .slider-value { font-size: 20px; font-weight: 500; min-width: 32px; text-align: right; }
+
+  .draw-result { display: none; margin-top: 20px; }
+  .draw-result-title { font-size: 14px; color: #5f5e5a; margin-bottom: 10px; }
+  .winners-list { display: flex; flex-direction: column; gap: 8px; }
+  .winner-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.4s ease;
+  }
+  .winner-card.show { opacity: 1; transform: translateY(0); }
+  .winner-num {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #FAEEDA; color: #854F0B;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 500; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .winner-name { font-size: 16px; font-weight: 500; }
+  .winner-meta { font-size: 13px; color: #888780; margin-top: 2px; }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .container { padding: 16px; }
+    .tab-btn { padding: 8px 10px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎉 이벤트 추첨 프로그램</h1>
+  <p class="subtitle">구글 스프레드시트에 참가자 데이터 저장</p>
+
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">초기 설정 필요</span>
+    <button id="btn-refresh" style="margin-left: auto; padding: 4px 10px; font-size: 12px;">새로고침</button>
+  </div>
+
+  <!-- 초기 설정 박스 -->
+  <div id="setup-box" class="setup-box">
+    <strong>📌 최초 설정 방법</strong>
+    <p style="margin-top:6px;">함께 제공된 <code>setup_guide.md</code> 파일의 안내에 따라 구글 스프레드시트와 Apps Script를 설정한 뒤, 배포된 웹앱 URL을 아래에 입력하세요.</p>
+    <div style="margin-top: 12px;">
+      <label style="display:block; margin-bottom:4px;">Apps Script 웹앱 URL</label>
+      <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/..../exec" />
+    </div>
+    <button id="btn-save-config" class="btn-primary" style="margin-top:12px;">설정 저장 및 연결</button>
+  </div>
+
+  <!-- 모드 전환 -->
+  <div class="mode-switch" id="mode-switch" style="display:none;">
+    <button id="mode-user" class="active">👤 참가자 등록</button>
+    <button id="mode-admin">🔧 관리자</button>
+  </div>
+
+  <!-- 참가자 모드 -->
+  <div id="user-mode" style="display:none;">
+    <div class="form-box">
+      <p class="form-desc">이벤트 참가를 위해 정보를 입력해주세요.</p>
+      <div class="form-group">
+        <label>이름 <span class="required">*</span></label>
+        <input type="text" id="input-name" placeholder="홍길동" />
+      </div>
+      <div class="form-group">
+        <label>연락처 <span class="required">*</span></label>
+        <input type="text" id="input-phone" placeholder="010-1234-5678" />
+      </div>
+      <div class="form-group">
+        <label>소속 (선택)</label>
+        <input type="text" id="input-org" placeholder="회사 또는 부서명" />
+      </div>
+      <button id="btn-add" class="btn-primary">참가 등록</button>
+      <p id="msg" class="msg"></p>
+    </div>
+    <p style="font-size:12px; color:#888780; text-align:center;">
+      총 <span id="user-count">0</span>명이 참여했습니다.
+    </p>
+  </div>
+
+  <!-- 관리자 모드 -->
+  <div id="admin-mode" style="display:none;">
+    <div class="tabs">
+      <button id="tab-list" class="tab-btn active">참가자 목록 <span class="count-badge" id="count-badge">0</span></button>
+      <button id="tab-draw" class="tab-btn">추첨</button>
+      <button id="tab-settings" class="tab-btn">설정</button>
+    </div>
+
+    <!-- 목록 패널 -->
+    <div id="panel-list" class="panel active">
+      <div id="list-empty" class="empty-state">아직 등록된 참가자가 없습니다.</div>
+      <div id="list-container" style="display: none;">
+        <div class="list-header">
+          <p style="font-size:14px;">총 <strong id="total-count">0</strong>명</p>
+          <button id="btn-export" style="font-size: 12px; padding: 6px 12px;">CSV 내보내기</button>
+        </div>
+        <div id="participant-list" class="participant-list"></div>
+      </div>
+    </div>
+
+    <!-- 추첨 패널 -->
+    <div id="panel-draw" class="panel">
+      <div class="form-box">
+        <label style="font-size: 13px; color: #5f5e5a; display: block; margin-bottom: 8px;">당첨자 수</label>
+        <div class="slider-row">
+          <input type="range" min="1" max="10" value="1" id="winner-count" step="1" />
+          <span id="winner-count-out" class="slider-value">1</span>
+          <span style="font-size: 14px; color: #888780;">명</span>
+        </div>
+        <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎉 추첨 시작</button>
+      </div>
+      <div id="draw-result" class="draw-result">
+        <p class="draw-result-title">🏆 당첨자</p>
+        <div id="winners-list" class="winners-list"></div>
+        <button id="btn-redraw" style="width: 100%; margin-top: 12px; font-size: 13px;">다시 추첨</button>
+      </div>
+    </div>
+
+    <!-- 설정 패널 -->
+    <div id="panel-settings" class="panel">
+      <div class="form-box">
+        <p class="form-desc">연결된 Apps Script URL을 변경할 수 있습니다.</p>
+        <div class="form-group">
+          <label>Apps Script 웹앱 URL</label>
+          <input type="text" id="cfg-url-edit" />
+        </div>
+        <button id="btn-update-config" class="btn-primary">설정 업데이트</button>
+        <button id="btn-reset-config" class="btn-danger" style="width:100%; margin-top:8px;">설정 초기화</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const CONFIG_KEY = 'raffle_gas_config';
+  let config = null;
+  let participants = [];
+  let pollingTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  try {
+    const saved = localStorage.getItem(CONFIG_KEY);
+    if (saved) config = JSON.parse(saved);
+  } catch (e) { config = null; }
+
+  function setStatus(state, text) {
+    const dot = $('status-dot');
+    dot.classList.remove('connected', 'error');
+    if (state === 'ok') dot.classList.add('connected');
+    else if (state === 'error') dot.classList.add('error');
+    $('status-text').textContent = text;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
+  // 데이터 조회 (GET)
+  async function fetchData() {
+    if (!config) return;
+    try {
+      setStatus('loading', '동기화 중...');
+      const res = await fetch(config.url + '?action=list');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if (json.status !== 'ok') throw new Error(json.message || '오류');
+      participants = json.data || [];
+      setStatus('ok', '연결됨 (자동 동기화)');
+      updateUI();
+    } catch (err) {
+      setStatus('error', '연결 실패: ' + err.message);
+      console.error(err);
+    }
+  }
+
+  // 참가자 추가 (POST) — text/plain으로 CORS preflight 회피
+  async function addParticipant(data) {
+    try {
+      const res = await fetch(config.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'add', ...data })
+      });
+      const json = await res.json();
+      return json;
+    } catch (err) {
+      return { status: 'error', message: err.message };
+    }
+  }
+
+  // 참가자 삭제
+  async function removeParticipant(id) {
+    try {
+      const res = await fetch(config.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'remove', id })
+      });
+      return await res.json();
+    } catch (err) {
+      return { status: 'error', message: err.message };
+    }
+  }
+
+  // 초기 설정 저장
+  $('btn-save-config').addEventListener('click', async () => {
+    const url = $('cfg-url').value.trim();
+    if (!url.startsWith('https://script.google.com/')) {
+      alert('올바른 Apps Script 웹앱 URL을 입력하세요.');
+      return;
+    }
+    config = { url };
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    await initApp();
+  });
+
+  $('btn-update-config').addEventListener('click', async () => {
+    const url = $('cfg-url-edit').value.trim();
+    if (!url.startsWith('https://script.google.com/')) {
+      alert('올바른 URL을 입력하세요.');
+      return;
+    }
+    config = { url };
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    await fetchData();
+    alert('설정이 업데이트되었습니다.');
+  });
+
+  $('btn-reset-config').addEventListener('click', () => {
+    if (!confirm('설정을 초기화하시겠습니까?')) return;
+    localStorage.removeItem(CONFIG_KEY);
+    location.reload();
+  });
+
+  $('btn-refresh').addEventListener('click', fetchData);
+
+  // 모드 전환
+  $('mode-user').addEventListener('click', () => switchMode('user'));
+  $('mode-admin').addEventListener('click', () => switchMode('admin'));
+
+  function switchMode(mode) {
+    $('mode-user').classList.toggle('active', mode === 'user');
+    $('mode-admin').classList.toggle('active', mode === 'admin');
+    $('user-mode').style.display = mode === 'user' ? 'block' : 'none';
+    $('admin-mode').style.display = mode === 'admin' ? 'block' : 'none';
+  }
+
+  // 관리자 탭
+  const tabs = ['list', 'draw', 'settings'];
+  tabs.forEach(name => {
+    $('tab-' + name).addEventListener('click', () => {
+      tabs.forEach(n => {
+        $('tab-' + n).classList.toggle('active', n === name);
+        $('panel-' + n).classList.toggle('active', n === name);
+      });
+      if (name === 'settings' && config) {
+        $('cfg-url-edit').value = config.url;
+      }
+    });
+  });
+
+  // 참가자 추가
+  $('btn-add').addEventListener('click', async () => {
+    const name = $('input-name').value.trim();
+    const phone = $('input-phone').value.trim();
+    const org = $('input-org').value.trim();
+    const msg = $('msg');
+
+    if (!name || !phone) {
+      msg.className = 'msg error';
+      msg.textContent = '이름과 연락처는 필수입니다.';
+      return;
+    }
+
+    $('btn-add').disabled = true;
+    msg.className = 'msg';
+    msg.textContent = '등록 중...';
+
+    const result = await addParticipant({ name, phone, org: org || '-' });
+
+    $('btn-add').disabled = false;
+
+    if (result.status === 'ok') {
+      $('input-name').value = '';
+      $('input-phone').value = '';
+      $('input-org').value = '';
+      msg.className = 'msg success';
+      msg.textContent = '✓ 등록이 완료되었습니다!';
+      setTimeout(() => { msg.textContent = ''; }, 3000);
+      await fetchData();
+    } else if (result.status === 'duplicate') {
+      msg.className = 'msg error';
+      msg.textContent = '이미 등록된 연락처입니다.';
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = '등록 실패: ' + (result.message || '알 수 없는 오류');
+    }
+  });
+
+  // CSV 내보내기
+  $('btn-export').addEventListener('click', () => {
+    if (participants.length === 0) return;
+    let csv = '번호,이름,연락처,소속,등록시간\n';
+    participants.forEach((p, i) => {
+      csv += `${i + 1},"${p.name}","${p.phone}","${p.org}","${p.time}"\n`;
+    });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '참가자목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  $('winner-count').addEventListener('input', (e) => {
+    $('winner-count-out').textContent = e.target.value;
+  });
+
+  // 추첨
+  function draw() {
+    const n = Math.min(parseInt($('winner-count').value), participants.length);
+    if (participants.length === 0) {
+      alert('참가자가 없습니다.');
+      return;
+    }
+    const pool = participants.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const winners = pool.slice(0, n);
+
+    const resultDiv = $('draw-result');
+    const list = $('winners-list');
+    list.innerHTML = '';
+    resultDiv.style.display = 'block';
+
+    winners.forEach((w, i) => {
+      const card = document.createElement('div');
+      card.className = 'winner-card';
+      card.innerHTML = `
+        <div class="winner-num">${i + 1}</div>
+        <div>
+          <div class="winner-name">${escapeHtml(w.name)}</div>
+          <div class="winner-meta">${escapeHtml(w.phone)} · ${escapeHtml(w.org)}</div>
+        </div>
+      `;
+      list.appendChild(card);
+      setTimeout(() => card.classList.add('show'), 150 + i * 200);
+    });
+    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  $('btn-draw').addEventListener('click', draw);
+  $('btn-redraw').addEventListener('click', draw);
+
+  ['input-name', 'input-phone', 'input-org'].forEach(id => {
+    $(id).addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') $('btn-add').click();
+    });
+  });
+
+  function updateUI() {
+    const count = participants.length;
+    $('count-badge').textContent = count;
+    $('total-count').textContent = count;
+    $('user-count').textContent = count;
+
+    const slider = $('winner-count');
+    slider.max = Math.max(1, Math.min(10, count));
+    if (parseInt(slider.value) > count && count > 0) {
+      slider.value = Math.max(1, count);
+      $('winner-count-out').textContent = slider.value;
+    }
+
+    if (count === 0) {
+      $('list-empty').style.display = 'block';
+      $('list-container').style.display = 'none';
+    } else {
+      $('list-empty').style.display = 'none';
+      $('list-container').style.display = 'block';
+
+      const container = $('participant-list');
+      container.innerHTML = '';
+      participants.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'participant-row';
+        row.innerHTML = `
+          <div class="participant-num">${i + 1}</div>
+          <div class="participant-info">
+            <div class="participant-name">${escapeHtml(p.name)} <span class="participant-org">${escapeHtml(p.org)}</span></div>
+            <div class="participant-meta">${escapeHtml(p.phone)} · ${p.time}</div>
+          </div>
+          <button data-id="${p.id}" class="btn-remove" style="padding:4px 10px; font-size:12px; color:#d85a30;">삭제</button>
+        `;
+        container.appendChild(row);
+      });
+      container.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          if (!confirm('이 참가자를 삭제하시겠습니까?')) return;
+          const id = e.target.dataset.id;
+          const result = await removeParticipant(id);
+          if (result.status === 'ok') {
+            await fetchData();
+          } else {
+            alert('삭제 실패: ' + (result.message || '오류'));
+          }
+        });
+      });
+    }
+  }
+
+  function startPolling() {
+    if (pollingTimer) clearInterval(pollingTimer);
+    pollingTimer = setInterval(fetchData, 10000);
+  }
+
+  async function initApp() {
+    $('setup-box').style.display = 'none';
+    $('mode-switch').style.display = 'flex';
+
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode') === 'admin' ? 'admin' : 'user';
+    switchMode(mode);
+
+    await fetchData();
+    startPolling();
+  }
+
+  if (config) {
+    initApp();
+  } else {
+    setStatus('error', '초기 설정이 필요합니다');
+  }
+})();
+</script>
+</body>
+</html>
