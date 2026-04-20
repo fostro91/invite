@@ -45,26 +45,6 @@
   .status-dot.connected { background: #1d9e75; }
   .status-dot.error { background: #d85a30; }
 
-  .setup-box {
-    background: #fef9e7;
-    border: 1px solid #f4d03f;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #854F0B;
-  }
-  .setup-box strong { display: block; margin-bottom: 6px; font-size: 14px; }
-  .setup-box ol { margin-left: 18px; margin-top: 8px; }
-  .setup-box li { margin-bottom: 4px; }
-  .setup-box code {
-    background: #ffffff;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: Menlo, Monaco, monospace;
-    font-size: 12px;
-  }
-
   .mode-switch {
     display: flex;
     border: 1px solid #d3d1c7;
@@ -130,7 +110,7 @@
     display: block; margin-bottom: 4px;
   }
   .required { color: #d85a30; }
-  input[type="text"], input[type="password"] {
+  input[type="text"] {
     width: 100%;
     padding: 10px 12px;
     font-size: 14px;
@@ -139,9 +119,7 @@
     background: #ffffff;
     font-family: inherit;
   }
-  input[type="text"]:focus, input[type="password"]:focus {
-    outline: none; border-color: #888780;
-  }
+  input[type="text"]:focus { outline: none; border-color: #888780; }
   input[type="range"] {
     flex: 1; height: 4px;
     -webkit-appearance: none; appearance: none;
@@ -181,6 +159,24 @@
   .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
   .msg.success { color: #1d9e75; }
   .msg.error { color: #d85a30; }
+
+  .config-warning {
+    background: #fde8e3;
+    border: 1px solid #d85a30;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #712B13;
+  }
+  .config-warning strong { display: block; margin-bottom: 6px; font-size: 14px; }
+  .config-warning code {
+    background: #ffffff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: Menlo, Monaco, monospace;
+    font-size: 12px;
+  }
 
   .empty-state {
     text-align: center;
@@ -270,21 +266,17 @@
   <h1>🎉 이벤트 추첨 프로그램</h1>
   <p class="subtitle">구글 스프레드시트에 참가자 데이터 저장</p>
 
-  <div class="status-bar" style="display:none;">
+  <div class="status-bar">
     <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">초기 설정 필요</span>
+    <span id="status-text">연결 준비 중...</span>
     <button id="btn-refresh" style="margin-left: auto; padding: 4px 10px; font-size: 12px;">새로고침</button>
   </div>
 
-  <!-- 초기 설정 박스 -->
-  <div id="setup-box" class="setup-box" style="display:none;">
-    <strong>📌 최초 설정 방법</strong>
-    <p style="margin-top:6px;">함께 제공된 <code>setup_guide.md</code> 파일의 안내에 따라 구글 스프레드시트와 Apps Script를 설정한 뒤, 배포된 웹앱 URL을 아래에 입력하세요.</p>
-    <div style="margin-top: 12px;">
-      <label style="display:block; margin-bottom:4px;">Apps Script 웹앱 URL</label>
-      <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/..../exec" />
-    </div>
-    <button id="btn-save-config" class="btn-primary" style="margin-top:12px;">설정 저장 및 연결</button>
+  <!-- URL 미설정 경고 -->
+  <div id="config-warning" class="config-warning" style="display:none;">
+    <strong>⚠️ Apps Script URL이 설정되지 않았습니다</strong>
+    <p>이 HTML 파일을 편집기로 열어서 상단의 <code>APPS_SCRIPT_URL</code> 값을 본인의 Apps Script 웹앱 URL로 교체하세요.</p>
+    <p style="margin-top: 6px;">예시: <code>const APPS_SCRIPT_URL = </code></p>
   </div>
 
   <!-- 모드 전환 -->
@@ -322,10 +314,8 @@
     <div class="tabs">
       <button id="tab-list" class="tab-btn active">참가자 목록 <span class="count-badge" id="count-badge">0</span></button>
       <button id="tab-draw" class="tab-btn">추첨</button>
-      <button id="tab-settings" class="tab-btn">설정</button>
     </div>
 
-    <!-- 목록 패널 -->
     <div id="panel-list" class="panel active">
       <div id="list-empty" class="empty-state">아직 등록된 참가자가 없습니다.</div>
       <div id="list-container" style="display: none;">
@@ -337,7 +327,6 @@
       </div>
     </div>
 
-    <!-- 추첨 패널 -->
     <div id="panel-draw" class="panel">
       <div class="form-box">
         <label style="font-size: 13px; color: #5f5e5a; display: block; margin-bottom: 8px;">당첨자 수</label>
@@ -354,35 +343,25 @@
         <button id="btn-redraw" style="width: 100%; margin-top: 12px; font-size: 13px;">다시 추첨</button>
       </div>
     </div>
-
-    <!-- 설정 패널 -->
-    <div id="panel-settings" class="panel">
-      <div class="form-box">
-        <p class="form-desc">연결된 Apps Script URL을 변경할 수 있습니다.</p>
-        <div class="form-group">
-          <label>Apps Script 웹앱 URL</label>
-          <input type="text" id="cfg-url-edit" />
-        </div>
-        <button id="btn-update-config" class="btn-primary">설정 업데이트</button>
-        <button id="btn-reset-config" class="btn-danger" style="width:100%; margin-top:8px;">설정 초기화</button>
-      </div>
-    </div>
   </div>
 </div>
 
 <script>
+// ===========================================================
+//  ⚙️  설정: 아래 따옴표 안의 URL만 본인의 Apps Script 웹앱
+//     URL로 교체하세요. 다른 코드는 건드릴 필요 없습니다.
+// ===========================================================
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llfAmXUaML6haDr2RdLf5RdzHdqMylcOY3PXtu1QLYO5NhvVI4j7xjk/exec";
+// ===========================================================
+
 (function() {
-  const CONFIG_KEY = 'raffle_gas_config';
-  let config = null;
   let participants = [];
   let pollingTimer = null;
 
   const $ = (id) => document.getElementById(id);
 
-  try {
-    const saved = localStorage.getItem(CONFIG_KEY);
-    if (saved) config = JSON.parse(saved);
-  } catch (e) { config = null; }
+  // URL 설정 확인
+  const isConfigured = APPS_SCRIPT_URL && APPS_SCRIPT_URL.startsWith('https://script.google.com/');
 
   function setStatus(state, text) {
     const dot = $('status-dot');
@@ -398,12 +377,12 @@
     return div.innerHTML;
   }
 
-  // 데이터 조회 (GET)
+  // 데이터 조회
   async function fetchData() {
-    if (!config) return;
+    if (!isConfigured) return;
     try {
       setStatus('loading', '동기화 중...');
-      const res = await fetch(config.url + '?action=list');
+      const res = await fetch(APPS_SCRIPT_URL + '?action=list');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
       if (json.status !== 'ok') throw new Error(json.message || '오류');
@@ -416,16 +395,15 @@
     }
   }
 
-  // 참가자 추가 (POST) — text/plain으로 CORS preflight 회피
+  // 참가자 추가
   async function addParticipant(data) {
     try {
-      const res = await fetch(config.url, {
+      const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'add', ...data })
       });
-      const json = await res.json();
-      return json;
+      return await res.json();
     } catch (err) {
       return { status: 'error', message: err.message };
     }
@@ -434,7 +412,7 @@
   // 참가자 삭제
   async function removeParticipant(id) {
     try {
-      const res = await fetch(config.url, {
+      const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'remove', id })
@@ -444,36 +422,6 @@
       return { status: 'error', message: err.message };
     }
   }
-
-  // 초기 설정 저장
-  $('btn-save-config').addEventListener('click', async () => {
-    const url = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llfAmXUaML6haDr2RdLf5RdzHdqMylcOY3PXtu1QLYO5NhvVI4j7xjk/exec";
-    if (!url.startsWith('https://script.google.com/')) {
-      alert('올바른 Apps Script 웹앱 URL을 입력하세요.');
-      return;
-    }
-    config = { url };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-    await initApp();
-  });
-
-  $('btn-update-config').addEventListener('click', async () => {
-    const url = $('cfg-url-edit').value.trim();
-    if (!url.startsWith('https://script.google.com/')) {
-      alert('올바른 URL을 입력하세요.');
-      return;
-    }
-    config = { url };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-    await fetchData();
-    alert('설정이 업데이트되었습니다.');
-  });
-
-  $('btn-reset-config').addEventListener('click', () => {
-    if (!confirm('설정을 초기화하시겠습니까?')) return;
-    localStorage.removeItem(CONFIG_KEY);
-    location.reload();
-  });
 
   $('btn-refresh').addEventListener('click', fetchData);
 
@@ -489,16 +437,13 @@
   }
 
   // 관리자 탭
-  const tabs = ['list', 'draw', 'settings'];
+  const tabs = ['list', 'draw'];
   tabs.forEach(name => {
     $('tab-' + name).addEventListener('click', () => {
       tabs.forEach(n => {
         $('tab-' + n).classList.toggle('active', n === name);
         $('panel-' + n).classList.toggle('active', n === name);
       });
-      if (name === 'settings' && config) {
-        $('cfg-url-edit').value = config.url;
-      }
     });
   });
 
@@ -658,22 +603,17 @@
     pollingTimer = setInterval(fetchData, 10000);
   }
 
-  async function initApp() {
-    $('setup-box').style.display = 'none';
+  // 시작
+  if (!isConfigured) {
+    setStatus('error', 'URL 미설정');
+    $('config-warning').style.display = 'block';
+  } else {
     $('mode-switch').style.display = 'flex';
-
     const params = new URLSearchParams(location.search);
     const mode = params.get('mode') === 'admin' ? 'admin' : 'user';
     switchMode(mode);
-
-    await fetchData();
+    fetchData();
     startPolling();
-  }
-
-  if (config) {
-    initApp();
-  } else {
-    setStatus('error', '초기 설정이 필요합니다');
   }
 })();
 </script>
