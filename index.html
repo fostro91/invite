@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>이벤트 참가자 등록 및 추첨</title>
+<title>복지교회 VIP 초청잔치 초청자 등록 및 추첨</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -225,6 +225,27 @@
   }
   .participant-meta { font-size: 12px; color: #888780; margin-top: 2px; }
 
+  .attend-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .attend-badge.attended {
+    background: #e3f5ed;
+    color: #1d9e75;
+  }
+  .attend-badge.waiting {
+    background: #f1efe8;
+    color: #888780;
+  }
+  .attend-badge.won {
+    background: #FAEEDA;
+    color: #854F0B;
+    font-weight: 500;
+  }
+
   .slider-row {
     display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
   }
@@ -263,8 +284,8 @@
 </head>
 <body>
 <div class="container">
-  <h1>🎉 이벤트 추첨 프로그램</h1>
-  <p class="subtitle">구글 스프레드시트에 참가자 데이터 저장</p>
+  <h1>🎉 복지교회 VIP 초청잔치 초청자 등록 및 추첨</h1>
+  <p class="subtitle">구글 스프레드시트에 초청자 데이터 저장</p>
 
   <div class="status-bar">
     <div class="status-dot" id="status-dot"></div>
@@ -281,46 +302,46 @@
 
   <!-- 모드 전환 -->
   <div class="mode-switch" id="mode-switch" style="display:none;">
-    <button id="mode-user" class="active">👤 참가자 등록</button>
+    <button id="mode-user" class="active">👤 초청자 등록</button>
     <button id="mode-admin">🔧 관리자</button>
   </div>
 
-  <!-- 참가자 모드 -->
+  <!-- 초청자 모드 -->
   <div id="user-mode" style="display:none;">
     <div class="form-box">
-      <p class="form-desc">이벤트 참가를 위해 정보를 입력해주세요.</p>
+      <p class="form-desc">사전 등록자는 이름·연락처로 출석 확인되며, 명단에 없으신 분은 자동으로 등록됩니다.</p>
       <div class="form-group">
         <label>이름 <span class="required">*</span></label>
         <input type="text" id="input-name" placeholder="홍길동" />
       </div>
       <div class="form-group">
         <label>연락처 <span class="required">*</span></label>
-        <input type="text" id="input-phone" placeholder="010-1234-5678" />
+        <input type="text" id="input-phone" placeholder="01012345678" />
       </div>
       <div class="form-group">
-        <label>소속 (선택)</label>
-        <input type="text" id="input-org" placeholder="회사 또는 부서명" />
+        <label>초청자 (선택)</label>
+        <input type="text" id="input-org" placeholder="초청해주신 분 성함" />
       </div>
-      <button id="btn-add" class="btn-primary">참가 등록</button>
+      <button id="btn-add" class="btn-primary">출석 체크인</button>
       <p id="msg" class="msg"></p>
     </div>
     <p style="font-size:12px; color:#888780; text-align:center;">
-      총 <span id="user-count">0</span>명이 참여했습니다.
+      현재 <span id="user-count">0</span>명이 출석했습니다.
     </p>
   </div>
 
   <!-- 관리자 모드 -->
   <div id="admin-mode" style="display:none;">
     <div class="tabs">
-      <button id="tab-list" class="tab-btn active">참가자 목록 <span class="count-badge" id="count-badge">0</span></button>
+      <button id="tab-list" class="tab-btn active">초청자 목록 <span class="count-badge" id="count-badge">0</span></button>
       <button id="tab-draw" class="tab-btn">추첨</button>
     </div>
 
     <div id="panel-list" class="panel active">
-      <div id="list-empty" class="empty-state">아직 등록된 참가자가 없습니다.</div>
+      <div id="list-empty" class="empty-state">아직 등록된 초청자가 없습니다.</div>
       <div id="list-container" style="display: none;">
         <div class="list-header">
-          <p style="font-size:14px;">총 <strong id="total-count">0</strong>명</p>
+          <p style="font-size:14px;">총 <strong id="total-count">0</strong>명 · 출석 <strong id="attended-count">0</strong>명</p>
           <button id="btn-export" style="font-size: 12px; padding: 6px 12px;">CSV 내보내기</button>
         </div>
         <div id="participant-list" class="participant-list"></div>
@@ -329,6 +350,8 @@
 
     <div id="panel-draw" class="panel">
       <div class="form-box">
+        <p class="form-desc">출석 처리된 초청자 중에서만 추첨됩니다. 한 번 당첨된 사람은 자동으로 제외되며, 당첨 결과는 구글 시트의 "당첨자" 시트에 회차별로 저장됩니다.</p>
+        <p id="draw-pool-info" style="font-size:12px; color:#5f5e5a; margin-bottom:10px;">출석 0명 · 누적 당첨 0명 · 남은 대상자 0명</p>
         <label style="font-size: 13px; color: #5f5e5a; display: block; margin-bottom: 8px;">당첨자 수</label>
         <div class="slider-row">
           <input type="range" min="1" max="10" value="1" id="winner-count" step="1" />
@@ -336,9 +359,11 @@
           <span style="font-size: 14px; color: #888780;">명</span>
         </div>
         <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎉 추첨 시작</button>
+        <button id="btn-reset-winners" style="width:100%; margin-top:8px; font-size:12px; color:#5f5e5a;">↺ 당첨자 초기화 (전원 재추첨 가능)</button>
       </div>
       <div id="draw-result" class="draw-result">
         <p class="draw-result-title">🏆 당첨자</p>
+        <p id="draw-info" style="font-size:12px; color:#5f5e5a; margin-bottom:10px;"></p>
         <div id="winners-list" class="winners-list"></div>
         <button id="btn-redraw" style="width: 100%; margin-top: 12px; font-size: 13px;">다시 추첨</button>
       </div>
@@ -351,12 +376,14 @@
 //  ⚙️  설정: 아래 따옴표 안의 URL만 본인의 Apps Script 웹앱
 //     URL로 교체하세요. 다른 코드는 건드릴 필요 없습니다.
 // ===========================================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llfAmXUaML6haDr2RdLf5RdzHdqMylcOY3PXtu1QLYO5NhvVI4j7xjk/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhAF3audOfyUlSOgt5IF8VMC4ZKq_X59TOVFnZGULfEZPVmvkWxXCbh/exec";
 // ===========================================================
 
 (function() {
   let participants = [];
   let pollingTimer = null;
+  // 누적 당첨자 ID 집합 (서버에서 동기화됨, 한 번 당첨된 사람은 제외)
+  const drawnIds = new Set();
 
   const $ = (id) => document.getElementById(id);
 
@@ -387,6 +414,11 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
       const json = await res.json();
       if (json.status !== 'ok') throw new Error(json.message || '오류');
       participants = json.data || [];
+
+      // 서버의 누적 당첨자로 drawnIds 동기화
+      drawnIds.clear();
+      (json.winners || []).forEach(w => drawnIds.add(w.id));
+
       setStatus('ok', '연결됨 (자동 동기화)');
       updateUI();
     } catch (err) {
@@ -395,7 +427,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
     }
   }
 
-  // 참가자 추가
+  // 초청자 추가
   async function addParticipant(data) {
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
@@ -409,7 +441,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
     }
   }
 
-  // 참가자 삭제
+  // 초청자 삭제
   async function removeParticipant(id) {
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
@@ -447,7 +479,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
     });
   });
 
-  // 참가자 추가
+  // 초청자 추가
   $('btn-add').addEventListener('click', async () => {
     const name = $('input-name').value.trim();
     const phone = $('input-phone').value.trim();
@@ -468,17 +500,27 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
 
     $('btn-add').disabled = false;
 
-    if (result.status === 'ok') {
+    if (result.status === 'checked_in') {
+      // 사전 등록된 사용자가 출석
       $('input-name').value = '';
       $('input-phone').value = '';
       $('input-org').value = '';
       msg.className = 'msg success';
-      msg.textContent = '✓ 등록이 완료되었습니다!';
-      setTimeout(() => { msg.textContent = ''; }, 3000);
+      msg.textContent = `✓ ${result.name}님, 환영합니다! 출석 처리되었습니다 (${result.attended})`;
+      setTimeout(() => { msg.textContent = ''; }, 4000);
       await fetchData();
-    } else if (result.status === 'duplicate') {
+    } else if (result.status === 'new') {
+      // 명단에 없던 사용자 신규 등록 + 출석
+      $('input-name').value = '';
+      $('input-phone').value = '';
+      $('input-org').value = '';
+      msg.className = 'msg success';
+      msg.textContent = `✓ ${result.name}님, 신규 등록 후 출석 처리되었습니다 (${result.attended})`;
+      setTimeout(() => { msg.textContent = ''; }, 4000);
+      await fetchData();
+    } else if (result.status === 'already') {
       msg.className = 'msg error';
-      msg.textContent = '이미 등록된 연락처입니다.';
+      msg.textContent = `이미 ${result.attended}에 출석 처리되었습니다.`;
     } else {
       msg.className = 'msg error';
       msg.textContent = '등록 실패: ' + (result.message || '알 수 없는 오류');
@@ -488,15 +530,16 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
   // CSV 내보내기
   $('btn-export').addEventListener('click', () => {
     if (participants.length === 0) return;
-    let csv = '번호,이름,연락처,소속,등록시간\n';
+    let csv = '번호,이름,연락처,초청자,등록시간,출석시간\n';
     participants.forEach((p, i) => {
-      csv += `${i + 1},"${p.name}","${p.phone}","${p.org}","${p.time}"\n`;
+      // 연락처는 ="..." 형식으로 감싸서 엑셀이 숫자로 자동변환하는 것을 방지
+      csv += `${i + 1},"${p.name}","=""${p.phone}""","${p.org}","${p.time}","${p.attended || ''}"\n`;
     });
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = '참가자목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = '초청자목록_' + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -505,24 +548,95 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
     $('winner-count-out').textContent = e.target.value;
   });
 
-  // 추첨
-  function draw() {
-    const n = Math.min(parseInt($('winner-count').value), participants.length);
-    if (participants.length === 0) {
-      alert('참가자가 없습니다.');
+  // 당첨자를 서버에 저장
+  async function saveWinnersToServer(winners) {
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'save_winners',
+          winners: winners.map(w => ({
+            id: w.id, name: w.name, phone: w.phone, org: w.org
+          }))
+        })
+      });
+      return await res.json();
+    } catch (err) {
+      return { status: 'error', message: err.message };
+    }
+  }
+
+  // 당첨자 전체 초기화 요청
+  async function clearWinnersOnServer() {
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'clear_winners' })
+      });
+      return await res.json();
+    } catch (err) {
+      return { status: 'error', message: err.message };
+    }
+  }
+
+  // 추첨 (출석자만 대상, 이전 당첨자 제외)
+  async function draw() {
+    const attendees = participants.filter(p => p.attended);
+    const eligible = attendees.filter(p => !drawnIds.has(p.id));
+    const requested = parseInt($('winner-count').value);
+
+    if (attendees.length === 0) {
+      alert('출석한 초청자가 없습니다.');
       return;
     }
-    const pool = participants.slice();
+    if (eligible.length === 0) {
+      alert('남은 추첨 대상자가 없습니다.\n"당첨자 초기화" 버튼을 눌러 다시 추첨할 수 있습니다.');
+      return;
+    }
+
+    const n = Math.min(requested, eligible.length);
+    const pool = eligible.slice();
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     const winners = pool.slice(0, n);
 
+    // 추첨 버튼 잠시 비활성화
+    $('btn-draw').disabled = true;
+    $('btn-redraw').disabled = true;
+
+    // 서버에 당첨자 저장 (성공해야 누적 당첨에 포함)
+    const saveResult = await saveWinnersToServer(winners);
+
+    $('btn-draw').disabled = false;
+    $('btn-redraw').disabled = false;
+
+    if (saveResult.status !== 'ok') {
+      alert('당첨자 저장 실패: ' + (saveResult.message || '알 수 없는 오류') + '\n다시 시도해주세요.');
+      return;
+    }
+
+    // 저장 성공 후 로컬 상태 갱신
+    winners.forEach(w => drawnIds.add(w.id));
+
     const resultDiv = $('draw-result');
     const list = $('winners-list');
     list.innerHTML = '';
     resultDiv.style.display = 'block';
+
+    // 남은 인원 / 요청 인원 부족 안내
+    const info = $('draw-info');
+    if (info) {
+      const remaining = eligible.length - winners.length;
+      let infoText = `🎯 ${saveResult.round}회차 · 이번 ${winners.length}명 당첨 · 누적 ${drawnIds.size}명 · 남은 대상자 ${remaining}명`;
+      if (n < requested) {
+        infoText = `⚠️ 남은 대상자가 ${eligible.length}명뿐이라 ${n}명만 추첨되었습니다. (${saveResult.round}회차)`;
+      }
+      info.textContent = infoText;
+    }
 
     winners.forEach((w, i) => {
       const card = document.createElement('div');
@@ -538,9 +652,33 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
       setTimeout(() => card.classList.add('show'), 150 + i * 200);
     });
     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    updateUI();
   }
   $('btn-draw').addEventListener('click', draw);
   $('btn-redraw').addEventListener('click', draw);
+
+  // 당첨자 초기화 (서버 + 로컬 모두)
+  $('btn-reset-winners').addEventListener('click', async () => {
+    if (drawnIds.size === 0) {
+      alert('초기화할 당첨자가 없습니다.');
+      return;
+    }
+    if (!confirm(`누적 당첨자 ${drawnIds.size}명을 모두 초기화하시겠습니까?\n구글 시트의 "당첨자" 시트 데이터도 함께 삭제되며, 이후 모든 출석자가 다시 추첨 대상이 됩니다.`)) return;
+
+    $('btn-reset-winners').disabled = true;
+    const result = await clearWinnersOnServer();
+    $('btn-reset-winners').disabled = false;
+
+    if (result.status !== 'ok') {
+      alert('초기화 실패: ' + (result.message || '오류'));
+      return;
+    }
+
+    drawnIds.clear();
+    $('draw-result').style.display = 'none';
+    updateUI();
+    alert('당첨자 명단이 초기화되었습니다.');
+  });
 
   ['input-name', 'input-phone', 'input-org'].forEach(id => {
     $(id).addEventListener('keypress', (e) => {
@@ -550,14 +688,25 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
 
   function updateUI() {
     const count = participants.length;
+    const attendedCount = participants.filter(p => p.attended).length;
+    const remainingCount = participants.filter(p => p.attended && !drawnIds.has(p.id)).length;
     $('count-badge').textContent = count;
     $('total-count').textContent = count;
-    $('user-count').textContent = count;
+    $('attended-count').textContent = attendedCount;
+    $('user-count').textContent = attendedCount;
 
+    // 추첨 패널 안내
+    const poolInfo = $('draw-pool-info');
+    if (poolInfo) {
+      poolInfo.textContent = `출석 ${attendedCount}명 · 누적 당첨 ${drawnIds.size}명 · 남은 대상자 ${remainingCount}명`;
+    }
+
+    // 슬라이더는 "남은 대상자" 수에 맞춰 최대값 조정
     const slider = $('winner-count');
-    slider.max = Math.max(1, Math.min(10, count));
-    if (parseInt(slider.value) > count && count > 0) {
-      slider.value = Math.max(1, count);
+    const sliderMax = Math.max(1, Math.min(10, remainingCount));
+    slider.max = sliderMax;
+    if (parseInt(slider.value) > sliderMax) {
+      slider.value = sliderMax;
       $('winner-count-out').textContent = slider.value;
     }
 
@@ -573,19 +722,27 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_g41r6SC7_llf
       participants.forEach((p, i) => {
         const row = document.createElement('div');
         row.className = 'participant-row';
+        const attendedBadge = p.attended
+          ? `<span class="attend-badge attended">출석 ${escapeHtml(p.attended)}</span>`
+          : `<span class="attend-badge waiting">미출석</span>`;
+        const wonBadge = drawnIds.has(p.id)
+          ? `<span class="attend-badge won">🏆 당첨</span>`
+          : '';
         row.innerHTML = `
           <div class="participant-num">${i + 1}</div>
           <div class="participant-info">
             <div class="participant-name">${escapeHtml(p.name)} <span class="participant-org">${escapeHtml(p.org)}</span></div>
-            <div class="participant-meta">${escapeHtml(p.phone)} · ${p.time}</div>
+            <div class="participant-meta">${escapeHtml(p.phone)} · 등록 ${p.time}</div>
           </div>
+          ${wonBadge}
+          ${attendedBadge}
           <button data-id="${p.id}" class="btn-remove" style="padding:4px 10px; font-size:12px; color:#d85a30;">삭제</button>
         `;
         container.appendChild(row);
       });
       container.querySelectorAll('.btn-remove').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-          if (!confirm('이 참가자를 삭제하시겠습니까?')) return;
+          if (!confirm('이 초청자를 삭제하시겠습니까?')) return;
           const id = e.target.dataset.id;
           const result = await removeParticipant(id);
           if (result.status === 'ok') {
