@@ -157,10 +157,11 @@
 
   h1 {
     font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     letter-spacing: 0.01em;
-    background: linear-gradient(135deg, #8B5A00 0%, #D4A017 35%, #F2D27C 50%, #D4A017 65%, #8B5A00 100%);
+    color: #6B3F00; /* 그라데이션 미지원 시 fallback */
+    background: linear-gradient(135deg, #5A3300 0%, #8B5A00 35%, #B8860B 50%, #8B5A00 65%, #5A3300 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -168,6 +169,8 @@
     animation: shimmer-text 6s linear infinite;
     line-height: 1.35;
     margin-bottom: 8px;
+    word-break: keep-all;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
   }
   @keyframes shimmer-text {
     0% { background-position: 0% center; }
@@ -957,7 +960,7 @@
   @media (max-width: 480px) {
     body { padding: 12px; }
     .container { padding: 20px 16px; border-radius: 18px; }
-    h1 { font-size: 19px; }
+    h1 { font-size: 23px; }
     .header-ornament::before, .header-ornament::after { flex-basis: 36px; }
     .tab-btn { padding: 9px 10px; font-size: 12px; }
     .winner-card { padding: 14px 14px; gap: 12px; }
