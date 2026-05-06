@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>복지교회 VIP 초청잔치 초청자 등록 및 추첨</title>
+<title>복지교회 VIP 초청잔치 - 초청자 등록 및 추첨</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -251,34 +251,239 @@
   }
   .slider-value { font-size: 20px; font-weight: 500; min-width: 32px; text-align: right; }
 
+  /* ===== 추첨 중 스피너 애니메이션 ===== */
+  .draw-spinning {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    margin: 20px 0;
+  }
+  .draw-spinning.active {
+    display: block;
+  }
+  .spinner-text {
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c2c2a;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+    animation: text-pulse 1s ease-in-out infinite;
+  }
+  @keyframes text-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    position: relative;
+  }
+  .spinner::before,
+  .spinner::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 3px solid #d3d1c7;
+    border-top-color: #854F0B;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  .spinner::after {
+    width: 75%;
+    height: 75%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-color: #d3d1c7;
+    border-right-color: #FFC857;
+    animation: spin 2s linear infinite reverse;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ===== 추첨 결과 영역 ===== */
   .draw-result { display: none; margin-top: 20px; }
   .draw-result-title { font-size: 14px; color: #5f5e5a; margin-bottom: 10px; }
-  .winners-list { display: flex; flex-direction: column; gap: 8px; }
+  .winners-list { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ===== 당첨자 카드 - 황금색 디자인 ===== */
   .winner-card {
-    background: #ffffff;
-    border: 1px solid #e5e5e0;
-    border-radius: 12px;
-    padding: 14px 16px;
-    display: flex; align-items: center; gap: 12px;
-    opacity: 0; transform: translateY(8px);
-    transition: all 0.4s ease;
+    background: linear-gradient(135deg, #FFFAEE 0%, #FFF5E6 100%);
+    border: 2px solid #FFD89B;
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 182, 93, 0.2);
   }
-  .winner-card.show { opacity: 1; transform: translateY(0); }
+
+  /* 카드 위 빛 흐르는 효과 */
+  .winner-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 100%
+    );
+    animation: shine 3s infinite;
+    pointer-events: none;
+  }
+
+  @keyframes shine {
+    0% { transform: rotate(0deg) translateX(-100%); }
+    100% { transform: rotate(0deg) translateX(100%); }
+  }
+
+  .winner-card.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 8px 24px rgba(255, 182, 93, 0.2); }
+    50% { box-shadow: 0 12px 32px rgba(255, 182, 93, 0.5); }
+  }
+
+  /* 당첨 번호 원 - 황금 그래디언트 */
   .winner-num {
-    width: 40px; height: 40px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
-    background: #FAEEDA; color: #854F0B;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 500; font-size: 15px;
+    background: linear-gradient(135deg, #FFD89B 0%, #FFC857 100%);
+    color: #8B5A00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 24px;
     flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(255, 182, 93, 0.4);
+    z-index: 1;
   }
-  .winner-name { font-size: 16px; font-weight: 500; }
-  .winner-meta { font-size: 13px; color: #888780; margin-top: 2px; }
+
+  /* 당첨 별 아이콘 */
+  .winner-num::before {
+    content: '⭐';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 20px;
+    animation: float 2s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(15deg); }
+  }
+
+  .winner-info {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .winner-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #8B5A00;
+    margin-bottom: 4px;
+  }
+  .winner-meta {
+    font-size: 13px;
+    color: #B8860B;
+  }
+
+  /* 축하 메시지 pop-in */
+  .celebration-text {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #8B5A00;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: pop-in 0.6s ease-out forwards;
+  }
+
+  @keyframes pop-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.5) rotate(-10deg);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  /* ===== 파티클(Confetti) 효과 ===== */
+  .confetti {
+    position: fixed;
+    pointer-events: none;
+    font-size: 24px;
+    z-index: 9999;
+    top: -30px;
+    will-change: transform, opacity;
+  }
+
+  .confetti-piece {
+    animation: confetti-fall 3s ease-in forwards;
+  }
+
+  @keyframes confetti-fall {
+    0% {
+      opacity: 1;
+      transform: translateY(0) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(110vh) rotate(720deg);
+    }
+  }
+
+  /* 추첨 버튼 비활성화 시 로딩 표시 */
+  .btn-primary:disabled {
+    position: relative;
+  }
 
   @media (max-width: 480px) {
     body { padding: 12px; }
     .container { padding: 16px; }
     .tab-btn { padding: 8px 10px; font-size: 13px; }
+    .winner-card {
+      padding: 14px 16px;
+      gap: 12px;
+    }
+    .winner-num {
+      width: 48px;
+      height: 48px;
+      font-size: 20px;
+    }
+    .winner-name {
+      font-size: 16px;
+    }
+    .celebration-text {
+      font-size: 22px;
+    }
+    .spinner-text {
+      font-size: 20px;
+    }
   }
 </style>
 </head>
@@ -297,13 +502,12 @@
   <div id="config-warning" class="config-warning" style="display:none;">
     <strong>⚠️ Apps Script URL이 설정되지 않았습니다</strong>
     <p>이 HTML 파일을 편집기로 열어서 상단의 <code>APPS_SCRIPT_URL</code> 값을 본인의 Apps Script 웹앱 URL로 교체하세요.</p>
-    <p style="margin-top: 6px;">예시: <code>const APPS_SCRIPT_URL = </code></p>
   </div>
 
-  <!-- 모드 전환 -->
+  <!-- 모드 전환 (관리자용 - 숨김) -->
   <div class="mode-switch" id="mode-switch" style="display:none;">
-    <button id="mode-user" class="active">👤 초청자 등록</button>
-    <button id="mode-admin">🔧 관리자</button>
+    <button id="mode-user" class="active">📝 초청자 등록</button>
+    <button id="mode-admin">🔐 관리자</button>
   </div>
 
   <!-- 초청자 모드 -->
@@ -325,9 +529,7 @@
       <button id="btn-add" class="btn-primary">출석 체크인</button>
       <p id="msg" class="msg"></p>
     </div>
-    <p style="font-size:12px; color:#888780; text-align:center;">
-      현재 <span id="user-count">0</span>명이 출석했습니다.
-    </p>
+    <!-- 사용자 모드는 출석 인원 수 및 목록을 표시하지 않음 -->
   </div>
 
   <!-- 관리자 모드 -->
@@ -341,8 +543,8 @@
       <div id="list-empty" class="empty-state">아직 등록된 초청자가 없습니다.</div>
       <div id="list-container" style="display: none;">
         <div class="list-header">
-          <p style="font-size:14px;">총 <strong id="total-count">0</strong>명 · 출석 <strong id="attended-count">0</strong>명</p>
-          <button id="btn-export" style="font-size: 12px; padding: 6px 12px;">CSV 내보내기</button>
+          <p style="font-size:14px;">총 <strong id="total-count">0</strong>명 · 출석 <strong id="attended-count" style="color:#1d9e75;">0</strong>명</p>
+          <button id="btn-export" style="font-size: 12px; padding: 6px 12px;">📥 CSV 내보내기</button>
         </div>
         <div id="participant-list" class="participant-list"></div>
       </div>
@@ -358,14 +560,23 @@
           <span id="winner-count-out" class="slider-value">1</span>
           <span style="font-size: 14px; color: #888780;">명</span>
         </div>
-        <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎉 추첨 시작</button>
-        <button id="btn-reset-winners" style="width:100%; margin-top:8px; font-size:12px; color:#5f5e5a;">↺ 당첨자 초기화 (전원 재추첨 가능)</button>
+        <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎲 추첨 시작</button>
+        <button id="btn-reset-winners" style="width:100%; margin-top:8px; font-size:12px; color:#5f5e5a;">🔄 당첨자 초기화 (전원 재추첨 가능)</button>
       </div>
+
+      <!-- 추첨 중 스피너 -->
+      <div id="draw-spinning" class="draw-spinning">
+        <div class="spinner-text">추첨 중...</div>
+        <div class="spinner"></div>
+      </div>
+
+      <!-- 추첨 결과 -->
       <div id="draw-result" class="draw-result">
+        <div class="celebration-text">🎉 축하합니다! 🎉</div>
         <p class="draw-result-title">🏆 당첨자</p>
         <p id="draw-info" style="font-size:12px; color:#5f5e5a; margin-bottom:10px;"></p>
         <div id="winners-list" class="winners-list"></div>
-        <button id="btn-redraw" style="width: 100%; margin-top: 12px; font-size: 13px;">다시 추첨</button>
+        <button id="btn-redraw" style="width: 100%; margin-top: 16px; font-size: 14px;">🎲 다시 추첨</button>
       </div>
     </div>
   </div>
@@ -382,6 +593,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
 (function() {
   let participants = [];
   let pollingTimer = null;
+  let isDrawing = false;
   // 누적 당첨자 ID 집합 (서버에서 동기화됨, 한 번 당첨된 사람은 제외)
   const drawnIds = new Set();
 
@@ -402,6 +614,21 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     const div = document.createElement('div');
     div.textContent = String(str);
     return div.innerHTML;
+  }
+
+  // ===== 파티클(축하 효과) 생성 =====
+  function createConfetti() {
+    const emojis = ['🎉', '🎊', '✨', '🌟', '⭐', '🎈', '🎁', '👏', '🏆'];
+    for (let i = 0; i < 35; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti confetti-piece';
+      confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      confetti.style.left = Math.random() * window.innerWidth + 'px';
+      confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+      confetti.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+      document.body.appendChild(confetti);
+      setTimeout(() => confetti.remove(), 4500);
+    }
   }
 
   // 데이터 조회
@@ -462,6 +689,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
   $('mode-admin').addEventListener('click', () => switchMode('admin'));
 
   function switchMode(mode) {
+    // mode-switch는 항상 숨김 (관리자는 URL로만 접근 가능)
+    $('mode-switch').style.display = 'none';
     $('mode-user').classList.toggle('active', mode === 'user');
     $('mode-admin').classList.toggle('active', mode === 'admin');
     $('user-mode').style.display = mode === 'user' ? 'block' : 'none';
@@ -581,18 +810,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     }
   }
 
-  // 추첨 (출석자만 대상, 이전 당첨자 제외)
+  // ===== 추첨 (멋진 효과 포함) =====
   async function draw() {
+    if (isDrawing) return;
+    isDrawing = true;
+
     const attendees = participants.filter(p => p.attended);
     const eligible = attendees.filter(p => !drawnIds.has(p.id));
     const requested = parseInt($('winner-count').value);
 
     if (attendees.length === 0) {
       alert('출석한 초청자가 없습니다.');
+      isDrawing = false;
       return;
     }
     if (eligible.length === 0) {
       alert('남은 추첨 대상자가 없습니다.\n"당첨자 초기화" 버튼을 눌러 다시 추첨할 수 있습니다.');
+      isDrawing = false;
       return;
     }
 
@@ -604,17 +838,32 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     }
     const winners = pool.slice(0, n);
 
-    // 추첨 버튼 잠시 비활성화
+    // 추첨 버튼 즉시 비활성화
     $('btn-draw').disabled = true;
     $('btn-redraw').disabled = true;
+
+    // 스피너 표시 + 결과 영역 숨김
+    const spinningDiv = $('draw-spinning');
+    const resultDiv = $('draw-result');
+    spinningDiv.classList.add('active');
+    resultDiv.style.display = 'none';
+
+    // 스피너로 스크롤
+    spinningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // 1.5초간 스피너 보여주기 (긴장감 연출)
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // 서버에 당첨자 저장 (성공해야 누적 당첨에 포함)
     const saveResult = await saveWinnersToServer(winners);
 
-    $('btn-draw').disabled = false;
-    $('btn-redraw').disabled = false;
+    // 스피너 숨김
+    spinningDiv.classList.remove('active');
 
     if (saveResult.status !== 'ok') {
+      $('btn-draw').disabled = false;
+      $('btn-redraw').disabled = false;
+      isDrawing = false;
       alert('당첨자 저장 실패: ' + (saveResult.message || '알 수 없는 오류') + '\n다시 시도해주세요.');
       return;
     }
@@ -622,10 +871,12 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     // 저장 성공 후 로컬 상태 갱신
     winners.forEach(w => drawnIds.add(w.id));
 
-    const resultDiv = $('draw-result');
     const list = $('winners-list');
     list.innerHTML = '';
     resultDiv.style.display = 'block';
+
+    // 파티클 효과 발생!
+    createConfetti();
 
     // 남은 인원 / 요청 인원 부족 안내
     const info = $('draw-info');
@@ -638,20 +889,35 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
       info.textContent = infoText;
     }
 
+    // 당첨자 카드 순차적으로 표시
     winners.forEach((w, i) => {
       const card = document.createElement('div');
       card.className = 'winner-card';
       card.innerHTML = `
         <div class="winner-num">${i + 1}</div>
-        <div>
+        <div class="winner-info">
           <div class="winner-name">${escapeHtml(w.name)}</div>
           <div class="winner-meta">${escapeHtml(w.phone)} · ${escapeHtml(w.org)}</div>
         </div>
       `;
       list.appendChild(card);
-      setTimeout(() => card.classList.add('show'), 150 + i * 200);
+      // 각 카드 200ms 간격으로 순차 등장
+      setTimeout(() => card.classList.add('show'), 150 + i * 250);
     });
-    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // 결과로 스크롤
+    setTimeout(() => {
+      resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    // 모든 카드가 나타난 후 버튼 다시 활성화
+    const totalAnimationTime = 150 + winners.length * 250 + 600;
+    setTimeout(() => {
+      $('btn-draw').disabled = false;
+      $('btn-redraw').disabled = false;
+      isDrawing = false;
+    }, totalAnimationTime);
+
     updateUI();
   }
   $('btn-draw').addEventListener('click', draw);
@@ -693,7 +959,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     $('count-badge').textContent = count;
     $('total-count').textContent = count;
     $('attended-count').textContent = attendedCount;
-    $('user-count').textContent = attendedCount;
 
     // 추첨 패널 안내
     const poolInfo = $('draw-pool-info');
@@ -765,7 +1030,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     setStatus('error', 'URL 미설정');
     $('config-warning').style.display = 'block';
   } else {
-    $('mode-switch').style.display = 'flex';
+    // mode-switch는 표시하지 않음 (관리자는 URL에 ?mode=admin 붙여서 접근)
     const params = new URLSearchParams(location.search);
     const mode = params.get('mode') === 'admin' ? 'admin' : 'user';
     switchMode(mode);
