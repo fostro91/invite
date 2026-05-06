@@ -1147,6 +1147,31 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
     }
+    // TTS 엔진 워밍업 (모바일에서 첫 발화 지연 방지)
+    if ('speechSynthesis' in window) {
+      try {
+        const warmup = new SpeechSynthesisUtterance(' ');
+        warmup.volume = 0;
+        warmup.lang = 'ko-KR';
+        window.speechSynthesis.speak(warmup);
+      } catch (e) {}
+    }
+  }
+
+  // 한국어 음성 발화
+  function speakKorean(text, opts = {}) {
+    if (!soundEnabled) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      // 이전 발화가 남아있으면 취소
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR';
+      u.rate = opts.rate ?? 0.95;
+      u.pitch = opts.pitch ?? 1.15;
+      u.volume = opts.volume ?? 1.0;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
   }
 
   // 노드를 dry + wet(reverb) 버스에 동시 라우팅
@@ -1210,19 +1235,13 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     return src;
   }
 
-  // 카운트다운 비프 (묵직한 서브킥 + 사이렌 톤)
+  // 카운트다운 배경음 (음성과 함께 - 서브 베이스 킥 + 클릭만)
   function playCountdownBeep(step) {
     if (!soundEnabled || !audioCtx) return;
-    // 서브 베이스 킥 (둥-)
+    // 묵직한 서브 베이스 킥 (둥-)
     const subStart = [180, 200, 220][step];
     const subEnd = [50, 55, 60][step];
     playTone(subStart, 0.5, 'sine', 0.55, 0, { freqEnd: subEnd, attack: 0.005, wet: 0.3 });
-    // 톤 (디튠 2중)
-    const toneFreq = [261.63, 329.63, 392][step]; // C4, E4, G4
-    playTone(toneFreq, 0.55, 'sawtooth', 0.16, 0, { wet: 0.6 });
-    playTone(toneFreq, 0.55, 'sawtooth', 0.10, 0, { detune: 12, wet: 0.6 });
-    // 옥타브 위 강조
-    playTone(toneFreq * 2, 0.4, 'square', 0.05, 0, { wet: 0.6 });
     // 클릭 transient
     playNoise(0.04, 0.3, 0, { filterType: 'highpass', filterFreq: 5000, Q: 1, wet: 0.3 });
   }
@@ -1331,32 +1350,100 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     playNoise(0.6, 0.35, 0, { filterType: 'bandpass', filterFreq: 6000, Q: 1, attack: 0.001, wet: 0.6 });
   }
 
-  // 팡파레 (시네마틱 - BOOM + 디튠 브라스 + 거대한 sustained 화음)
+  // 트럼펫 같은 브라스 노트 (디튠 3중 + 비브라토 + 브라스 필터 envelope)
+  function playBrassNote(freq, duration, when = 0, opts = {}) {
+    if (!soundEnabled || !audioCtx) return;
+    const t0 = audioCtx.currentTime + when;
+    const volume = opts.volume ?? 0.13;
+    const sustain = opts.sustain ?? false;
+    const vibrato = opts.vibrato ?? false;
+
+    // 3중 디튠 sawtooth (트럼펫 두툼한 코어 사운드)
+    [-12, 0, 12].forEach(detune => {
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t0);
+      osc.detune.value = detune;
+
+      // 비브라토 (sustained 노트만 - 어택 후 시작)
+      if (vibrato) {
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 5.5;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 9;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.detune);
+        lfo.start(t0 + 0.18);
+        lfo.stop(t0 + duration);
+      }
+
+      // 브라스 필터 envelope (어택 시 밝게 열렸다가 sustain 시 살짝 닫힘 - 트럼펫 특유의 "빠앙")
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.Q.value = 2;
+      filter.frequency.setValueAtTime(700, t0);
+      filter.frequency.exponentialRampToValueAtTime(4500, t0 + 0.04);
+      filter.frequency.exponentialRampToValueAtTime(2800, t0 + Math.min(0.3, duration));
+
+      // 진폭 envelope
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(volume, t0 + 0.04);
+      if (sustain) {
+        gain.gain.linearRampToValueAtTime(volume * 0.85, t0 + 0.18);
+        gain.gain.setValueAtTime(volume * 0.85, t0 + duration - 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      } else {
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      }
+
+      osc.connect(filter);
+      filter.connect(gain);
+      out(gain, 1, 0.5);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.05);
+    });
+
+    // 옥타브 위 square wave - 밝기와 입자감 (sustained 노트에서 더 강하게)
+    const sq = audioCtx.createOscillator();
+    sq.type = 'square';
+    sq.frequency.setValueAtTime(freq * 2, t0);
+    const sqGain = audioCtx.createGain();
+    sqGain.gain.setValueAtTime(0, t0);
+    sqGain.gain.linearRampToValueAtTime(volume * (sustain ? 0.25 : 0.18), t0 + 0.04);
+    sqGain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    sq.connect(sqGain);
+    out(sqGain, 1, 0.5);
+    sq.start(t0);
+    sq.stop(t0 + duration + 0.05);
+  }
+
+  // 팡파레 (진짜 빵빠레! - 트럼펫 ta-da 패턴: 딴-딴-딴-딴~~~)
   function playFanfare() {
     if (!soundEnabled || !audioCtx) return;
+    // BOOM 임팩트
     playImpact();
-    // 브라스 상승 (C-E-G-C, 디튠 3중)
-    const sequence = [
-      { f: 261.63, t: 0.10 },
-      { f: 329.63, t: 0.20 },
-      { f: 392.00, t: 0.30 },
-      { f: 523.25, t: 0.40 },
-    ];
-    sequence.forEach(({f, t}) => {
-      [-7, 0, 7].forEach(d => playTone(f, 0.28, 'sawtooth', 0.10, t, { detune: d, wet: 0.6 }));
-      playTone(f * 2, 0.25, 'square', 0.05, t, { wet: 0.6 });
-    });
-    // 마지막 sustained 화음 (두툼한 5중 + 옥타브 doubling)
-    const finalT = 0.55;
-    const chord = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.5];
-    chord.forEach(f => {
-      [-10, 0, 10].forEach(d => playTone(f, 1.6, 'sawtooth', 0.07, finalT, { detune: d, wet: 0.7 }));
-    });
-    // 서브 베이스 보강
-    playTone(130.81, 1.6, 'sine', 0.35, finalT, { wet: 0.4 });
-    playTone(65.41, 1.6, 'sine', 0.4, finalT, { wet: 0.3 });
-    // 스파클 데코 (0.6초 후)
-    setTimeout(() => playSparkle(), 600);
+
+    // 트럼펫 빵빠레 패턴 (C5-E5-G5 짧게 + C6 길게 sustained with vibrato)
+    playBrassNote(523.25, 0.18, 0.10, { volume: 0.14 });           // C5 "딴"
+    playBrassNote(659.25, 0.18, 0.28, { volume: 0.15 });           // E5 "딴"
+    playBrassNote(783.99, 0.18, 0.46, { volume: 0.16 });           // G5 "딴"
+    playBrassNote(1046.5, 1.8, 0.66, { volume: 0.18, sustain: true, vibrato: true }); // C6 "딴~~~"
+
+    // 서브 베이스 보강 (sustained 노트 받쳐주기)
+    playTone(130.81, 1.8, 'sine', 0.32, 0.66, { wet: 0.4 });
+    playTone(65.41, 1.8, 'sine', 0.38, 0.66, { wet: 0.3 });
+    playTone(261.63, 1.8, 'triangle', 0.18, 0.66, { wet: 0.4 });
+
+    // 화음 보강 - sustained 동안 G5, E5도 함께 (3화음 유지)
+    playBrassNote(659.25, 1.6, 0.66, { volume: 0.10, sustain: true, vibrato: true });
+    playBrassNote(783.99, 1.6, 0.66, { volume: 0.10, sustain: true, vibrato: true });
+
+    // 심벌 크래시 (sustained 시작 순간)
+    playNoise(1.5, 0.28, 0.62, { filterType: 'highpass', filterFreq: 4000, Q: 0.5, attack: 0.005, wet: 0.7 });
+
+    // 스파클 데코
+    setTimeout(() => playSparkle(), 800);
   }
 
   // 당첨자 카드 차임 (1등은 화려한 화음, 그 외는 종소리)
@@ -1424,6 +1511,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     const numEl = $('countdown-number');
     overlay.classList.add('active');
     const numbers = ['3', '2', '1', '✨'];
+    const voices = ['삼', '이', '일']; // 음성 발화용
     for (let i = 0; i < numbers.length; i++) {
       const n = numbers[i];
       numEl.textContent = n;
@@ -1431,9 +1519,13 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
       numEl.style.animation = 'none';
       void numEl.offsetWidth;
       numEl.style.animation = '';
-      // 음향 효과
-      if (i < 3) playCountdownBeep(i);
-      else playSparkle();
+      // 음향 + 음성
+      if (i < 3) {
+        playCountdownBeep(i);
+        speakKorean(voices[i]);
+      } else {
+        playSparkle();
+      }
       await new Promise(r => setTimeout(r, 900));
     }
     overlay.classList.remove('active');
