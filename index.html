@@ -1061,7 +1061,10 @@
           <span style="font-size: 14px; color: #888780;">명</span>
         </div>
         <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎲 추첨 시작</button>
-        <button id="btn-reset-winners" style="width:100%; margin-top:8px; font-size:12px; color:#5f5e5a;">🔄 당첨자 초기화 (전원 재추첨 가능)</button>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button id="btn-sound-toggle" style="flex:0 0 auto; font-size:12px; padding:8px 12px;" title="음향 효과 켜기/끄기">🔊 사운드 ON</button>
+          <button id="btn-reset-winners" style="flex:1; font-size:12px; color:#5f5e5a;">🔄 당첨자 초기화 (전원 재추첨 가능)</button>
+        </div>
       </div>
 
       <!-- 추첨 중 스피너 -->
@@ -1098,6 +1101,145 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
   const drawnIds = new Set();
 
   const $ = (id) => document.getElementById(id);
+
+  // ===========================================================
+  // 🔊 음향 효과 시스템 (Web Audio API - 외부 파일 없음)
+  // ===========================================================
+  let audioCtx = null;
+  let masterGain = null;
+  let soundEnabled = true;
+  let drumrollNodes = null; // 진행 중인 드럼롤 정지용
+
+  function initAudio() {
+    if (!audioCtx) {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.6;
+        masterGain.connect(audioCtx.destination);
+      } catch (e) {
+        audioCtx = null;
+      }
+    }
+    // iOS Safari: 사용자 제스처 후 resume 필요
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+  }
+
+  // 단일 톤 (envelope 포함)
+  function playTone(freq, duration, type = 'sine', volume = 0.2, when = 0) {
+    if (!soundEnabled || !audioCtx) return;
+    const t0 = audioCtx.currentTime + when;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(volume, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  }
+
+  // 카운트다운 비프 (3 → 2 → 1: C5, E5, G5)
+  function playCountdownBeep(step) {
+    const freqs = [523.25, 659.25, 783.99];
+    playTone(freqs[step] || 523, 0.22, 'square', 0.18);
+    // 살짝 반짝이는 고음 추가
+    playTone(freqs[step] * 2, 0.18, 'sine', 0.06, 0.01);
+  }
+
+  // ✨ 스파클 (반짝이는 글리산도)
+  function playSparkle() {
+    if (!soundEnabled || !audioCtx) return;
+    const notes = [1046.5, 1318.5, 1568, 2093, 2637]; // C6 ~ E7
+    notes.forEach((f, i) => {
+      playTone(f, 0.35, 'sine', 0.10, i * 0.06);
+    });
+  }
+
+  // 드럼롤 (스피너 도는 동안 긴장감)
+  function startDrumroll(duration = 1.2) {
+    if (!soundEnabled || !audioCtx) return;
+    stopDrumroll(); // 안전장치
+    const t0 = audioCtx.currentTime;
+    const stopAt = t0 + duration;
+    const sources = [];
+    const interval = 0.035;
+    for (let t = 0; t < duration; t += interval) {
+      const noise = audioCtx.createBufferSource();
+      const buffer = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.04), audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 180;
+      const gain = audioCtx.createGain();
+      // 점점 커지는 크레센도
+      const intensity = 0.06 + (t / duration) * 0.18;
+      gain.gain.setValueAtTime(intensity, t0 + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + t + 0.04);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      noise.start(t0 + t);
+      sources.push(noise);
+    }
+    drumrollNodes = sources;
+    setTimeout(() => { drumrollNodes = null; }, duration * 1000 + 100);
+  }
+  function stopDrumroll() {
+    if (drumrollNodes) {
+      drumrollNodes.forEach(n => { try { n.stop(); } catch(e){} });
+      drumrollNodes = null;
+    }
+  }
+
+  // 팡파레 (당첨 발표 - 메이저 코드 상승 + 화음 유지)
+  function playFanfare() {
+    if (!soundEnabled || !audioCtx) return;
+    const sequence = [
+      { f: 523.25, t: 0.00 }, // C5
+      { f: 659.25, t: 0.12 }, // E5
+      { f: 783.99, t: 0.24 }, // G5
+      { f: 1046.5, t: 0.36 }, // C6
+    ];
+    sequence.forEach(({f, t}) => {
+      playTone(f, 0.18, 'triangle', 0.20, t);
+    });
+    // 마지막 코드 (sustained)
+    [523.25, 659.25, 783.99, 1046.5].forEach(f => {
+      playTone(f, 0.9, 'sine', 0.10, 0.5);
+    });
+    // 반짝이는 고음 데코
+    playTone(2093, 0.6, 'sine', 0.06, 0.55);
+    playTone(2637, 0.6, 'sine', 0.05, 0.62);
+  }
+
+  // 당첨자 카드 등장 차임 (벨소리)
+  function playChime(rank) {
+    if (!soundEnabled || !audioCtx) return;
+    // 1등은 더 화려하게
+    const baseFreqs = rank === 0
+      ? [1046.5, 1318.5, 1568] // C6-E6-G6 (1등: 메이저)
+      : [880, 1108.7];          // A5-C#6 (그 외)
+    baseFreqs.forEach((f, i) => {
+      playTone(f, 0.45, 'sine', 0.14, i * 0.04);
+      playTone(f * 2, 0.25, 'sine', 0.05, i * 0.04 + 0.01);
+    });
+  }
+
+  function updateSoundButton() {
+    const btn = $('btn-sound-toggle');
+    if (!btn) return;
+    btn.textContent = soundEnabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
+  }
 
   // URL 설정 확인
   const isConfigured = APPS_SCRIPT_URL && APPS_SCRIPT_URL.startsWith('https://script.google.com/');
@@ -1139,12 +1281,16 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     const numEl = $('countdown-number');
     overlay.classList.add('active');
     const numbers = ['3', '2', '1', '✨'];
-    for (const n of numbers) {
+    for (let i = 0; i < numbers.length; i++) {
+      const n = numbers[i];
       numEl.textContent = n;
       // 애니메이션 재시작 트릭
       numEl.style.animation = 'none';
       void numEl.offsetWidth;
       numEl.style.animation = '';
+      // 음향 효과
+      if (i < 3) playCountdownBeep(i);
+      else playSparkle();
       await new Promise(r => setTimeout(r, 900));
     }
     overlay.classList.remove('active');
@@ -1401,6 +1547,9 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     if (isDrawing) return;
     isDrawing = true;
 
+    // 사용자 제스처에서 오디오 컨텍스트 초기화 (모바일 필수)
+    initAudio();
+
     const attendees = participants.filter(p => p.attended);
     const eligible = attendees.filter(p => !drawnIds.has(p.id));
     const requested = parseInt($('winner-count').value);
@@ -1438,14 +1587,18 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     spinningDiv.classList.add('active');
     spinningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
+    // 🥁 드럼롤 시작 (스피너 도는 동안)
+    startDrumroll(1.2);
+
     // 1.2초간 스피너 보여주기 (긴장감 연출)
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     // 서버에 당첨자 저장 (성공해야 누적 당첨에 포함)
     const saveResult = await saveWinnersToServer(winners);
 
-    // 스피너 숨김
+    // 스피너 + 드럼롤 정지
     spinningDiv.classList.remove('active');
+    stopDrumroll();
 
     if (saveResult.status !== 'ok') {
       $('btn-draw').disabled = false;
@@ -1462,7 +1615,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     list.innerHTML = '';
     resultDiv.style.display = 'block';
 
-    // 파티클 효과 발생!
+    // 🎺 팡파레 + 파티클 효과 발생!
+    playFanfare();
     createConfetti();
 
     // 남은 인원 / 요청 인원 부족 안내
@@ -1488,8 +1642,11 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
         </div>
       `;
       list.appendChild(card);
-      // 각 카드 200ms 간격으로 순차 등장
-      setTimeout(() => card.classList.add('show'), 150 + i * 250);
+      // 각 카드 250ms 간격으로 순차 등장 + 차임 사운드
+      setTimeout(() => {
+        card.classList.add('show');
+        playChime(i);
+      }, 150 + i * 250);
     });
 
     // 결과로 스크롤
@@ -1509,6 +1666,19 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
   }
   $('btn-draw').addEventListener('click', draw);
   $('btn-redraw').addEventListener('click', draw);
+
+  // 🔊 사운드 토글 버튼
+  $('btn-sound-toggle').addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    if (soundEnabled) initAudio();
+    else stopDrumroll();
+    updateSoundButton();
+    // 켤 때 짧은 확인음
+    if (soundEnabled) {
+      initAudio();
+      playTone(880, 0.15, 'sine', 0.15);
+    }
+  });
 
   // 당첨자 초기화 (서버 + 로컬 모두)
   $('btn-reset-winners').addEventListener('click', async () => {
