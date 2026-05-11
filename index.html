@@ -157,11 +157,10 @@
 
   h1 {
     font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: 0.01em;
-    color: #B8860B; /* 그라데이션 미지원 시 fallback */
-    background: linear-gradient(135deg, #B8860B 0%, #D4A017 35%, #E8B73F 50%, #D4A017 65%, #B8860B 100%);
+    background: linear-gradient(135deg, #8B5A00 0%, #D4A017 35%, #F2D27C 50%, #D4A017 65%, #8B5A00 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -169,7 +168,6 @@
     animation: shimmer-text 6s linear infinite;
     line-height: 1.35;
     margin-bottom: 8px;
-    word-break: keep-all;
   }
   @keyframes shimmer-text {
     0% { background-position: 0% center; }
@@ -959,7 +957,7 @@
   @media (max-width: 480px) {
     body { padding: 12px; }
     .container { padding: 20px 16px; border-radius: 18px; }
-    h1 { font-size: 23px; }
+    h1 { font-size: 19px; }
     .header-ornament::before, .header-ornament::after { flex-basis: 36px; }
     .tab-btn { padding: 9px 10px; font-size: 12px; }
     .winner-card { padding: 14px 14px; gap: 12px; }
@@ -1061,10 +1059,7 @@
           <span style="font-size: 14px; color: #888780;">명</span>
         </div>
         <button id="btn-draw" class="btn-primary" style="font-size: 15px; padding: 12px;">🎲 추첨 시작</button>
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button id="btn-sound-toggle" style="flex:0 0 auto; font-size:12px; padding:8px 12px;" title="음향 효과 켜기/끄기">🔊 사운드 ON</button>
-          <button id="btn-reset-winners" style="flex:1; font-size:12px; color:#5f5e5a;">🔄 당첨자 초기화 (전원 재추첨 가능)</button>
-        </div>
+        <button id="btn-reset-winners" style="width:100%; margin-top:8px; font-size:12px; color:#5f5e5a;">🔄 당첨자 초기화 (전원 재추첨 가능)</button>
       </div>
 
       <!-- 추첨 중 스피너 -->
@@ -1091,6 +1086,10 @@
 //     URL로 교체하세요. 다른 코드는 건드릴 필요 없습니다.
 // ===========================================================
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhAF3audOfyUlSOgt5IF8VMC4ZKq_X59TOVFnZGULfEZPVmvkWxXCbh/exec";
+
+// 폴링 간격(ms). 동접이 많아질수록 큰 값을 권장. 25초가 기본, 50~80명 환경이면 25~30초가 적정.
+// 100명 이상이면 40000 이상으로 늘리는 것을 고려하세요.
+const POLL_INTERVAL_MS = 25000;
 // ===========================================================
 
 (function() {
@@ -1101,375 +1100,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
   const drawnIds = new Set();
 
   const $ = (id) => document.getElementById(id);
-
-  // ===========================================================
-  // 🔊 음향 효과 시스템 (Web Audio API - 시네마틱)
-  // ===========================================================
-  let audioCtx = null;
-  let masterGain = null;
-  let dryBus = null;
-  let reverbSend = null;
-  let soundEnabled = true;
-  let drumrollNodes = null;
-
-  function initAudio() {
-    if (!audioCtx) {
-      try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return;
-        audioCtx = new Ctx();
-        masterGain = audioCtx.createGain();
-        masterGain.gain.value = 0.7;
-        masterGain.connect(audioCtx.destination);
-        // 합성 리버브 (영화관 홀 같은 공간감)
-        const conv = audioCtx.createConvolver();
-        const sr = audioCtx.sampleRate;
-        const len = Math.floor(sr * 2.5);
-        const buf = audioCtx.createBuffer(2, len, sr);
-        for (let ch = 0; ch < 2; ch++) {
-          const d = buf.getChannelData(ch);
-          for (let i = 0; i < len; i++) {
-            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
-          }
-        }
-        conv.buffer = buf;
-        reverbSend = audioCtx.createGain();
-        reverbSend.gain.value = 0.4;
-        reverbSend.connect(conv);
-        conv.connect(masterGain);
-        dryBus = audioCtx.createGain();
-        dryBus.gain.value = 1;
-        dryBus.connect(masterGain);
-      } catch (e) {
-        audioCtx = null;
-      }
-    }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
-    // TTS 엔진 워밍업 (모바일에서 첫 발화 지연 방지)
-    if ('speechSynthesis' in window) {
-      try {
-        const warmup = new SpeechSynthesisUtterance(' ');
-        warmup.volume = 0;
-        warmup.lang = 'ko-KR';
-        window.speechSynthesis.speak(warmup);
-      } catch (e) {}
-    }
-  }
-
-  // 한국어 음성 발화
-  function speakKorean(text, opts = {}) {
-    if (!soundEnabled) return;
-    if (!('speechSynthesis' in window)) return;
-    try {
-      // 이전 발화가 남아있으면 취소
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ko-KR';
-      u.rate = opts.rate ?? 0.95;
-      u.pitch = opts.pitch ?? 1.15;
-      u.volume = opts.volume ?? 1.0;
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
-  }
-
-  // 노드를 dry + wet(reverb) 버스에 동시 라우팅
-  function out(node, dry = 1, wet = 0.5) {
-    if (!audioCtx) return;
-    const dG = audioCtx.createGain();
-    dG.gain.value = dry;
-    node.connect(dG);
-    dG.connect(dryBus);
-    if (wet > 0) {
-      const wG = audioCtx.createGain();
-      wG.gain.value = wet;
-      node.connect(wG);
-      wG.connect(reverbSend);
-    }
-  }
-
-  // 톤 (옵션: 피치 스윕, 디튠, 어택)
-  function playTone(freq, duration, type = 'sine', volume = 0.2, when = 0, opts = {}) {
-    if (!soundEnabled || !audioCtx) return;
-    const t0 = audioCtx.currentTime + when;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (opts.freqEnd) osc.frequency.exponentialRampToValueAtTime(opts.freqEnd, t0 + duration);
-    if (opts.detune) osc.detune.value = opts.detune;
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(volume, t0 + (opts.attack || 0.01));
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    osc.connect(gain);
-    out(gain, opts.dry ?? 1, opts.wet ?? 0.5);
-    osc.start(t0);
-    osc.stop(t0 + duration + 0.1);
-    return osc;
-  }
-
-  // 노이즈 버스트 (필터링)
-  function playNoise(duration, volume = 0.2, when = 0, opts = {}) {
-    if (!soundEnabled || !audioCtx) return;
-    const t0 = audioCtx.currentTime + when;
-    const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * duration), audioCtx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = opts.filterType || 'bandpass';
-    filter.frequency.setValueAtTime(opts.filterFreq || 1000, t0);
-    if (opts.filterFreqEnd) filter.frequency.exponentialRampToValueAtTime(opts.filterFreqEnd, t0 + duration);
-    filter.Q.value = opts.Q || 1;
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(opts.attack ? 0 : volume, t0);
-    if (opts.attack) gain.gain.linearRampToValueAtTime(volume, t0 + opts.attack);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    src.connect(filter);
-    filter.connect(gain);
-    out(gain, opts.dry ?? 1, opts.wet ?? 0.4);
-    src.start(t0);
-    src.stop(t0 + duration + 0.05);
-    return src;
-  }
-
-  // 카운트다운 배경음 (음성과 함께 - 서브 베이스 킥 + 클릭만)
-  function playCountdownBeep(step) {
-    if (!soundEnabled || !audioCtx) return;
-    // 묵직한 서브 베이스 킥 (둥-)
-    const subStart = [180, 200, 220][step];
-    const subEnd = [50, 55, 60][step];
-    playTone(subStart, 0.5, 'sine', 0.55, 0, { freqEnd: subEnd, attack: 0.005, wet: 0.3 });
-    // 클릭 transient
-    playNoise(0.04, 0.3, 0, { filterType: 'highpass', filterFreq: 5000, Q: 1, wet: 0.3 });
-  }
-
-  // ✨ 매직 스파클 (위로 솟구치는 스윕 + 종 화음)
-  function playSparkle() {
-    if (!soundEnabled || !audioCtx) return;
-    // 휘이잉 - 솟구치는 스윕
-    playTone(200, 0.5, 'sine', 0.18, 0, { freqEnd: 4000, attack: 0.02, wet: 0.7 });
-    playTone(150, 0.45, 'sine', 0.10, 0.02, { freqEnd: 3000, attack: 0.02, wet: 0.7 });
-    // 종 화음 (메이저 펜타토닉)
-    const notes = [1046.5, 1318.5, 1568, 1975.5, 2349.3];
-    notes.forEach((f, i) => {
-      playTone(f, 1.0, 'sine', 0.10, i * 0.05, { wet: 0.8 });
-      playTone(f * 2, 0.5, 'sine', 0.04, i * 0.05, { wet: 0.8 });
-    });
-    // 반짝이는 고음 노이즈
-    playNoise(0.4, 0.05, 0, { filterType: 'highpass', filterFreq: 4000, Q: 0.5, wet: 0.6 });
-  }
-
-  // 드럼롤 → 시네마틱 라이저 (긴장감 폭발)
-  function startDrumroll(duration = 1.2) {
-    if (!soundEnabled || !audioCtx) return;
-    stopDrumroll();
-    const t0 = audioCtx.currentTime;
-    const sources = [];
-
-    // 1) 화이트노이즈 라이저 (필터 컷오프 200Hz → 8kHz, 음량도 점점 커짐)
-    const noiseBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * duration), audioCtx.sampleRate);
-    const nd = noiseBuf.getChannelData(0);
-    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1);
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = noiseBuf;
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'highpass';
-    noiseFilter.frequency.setValueAtTime(200, t0);
-    noiseFilter.frequency.exponentialRampToValueAtTime(8000, t0 + duration);
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.05, t0);
-    noiseGain.gain.linearRampToValueAtTime(0.28, t0 + duration);
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    out(noiseGain, 1, 0.4);
-    noise.start(t0);
-    noise.stop(t0 + duration + 0.05);
-    sources.push(noise);
-
-    // 2) 톤 라이저 (피치 80Hz → 800Hz 디튠 2중 sawtooth)
-    [-7, 7].forEach(d => {
-      const tone = audioCtx.createOscillator();
-      tone.type = 'sawtooth';
-      tone.frequency.setValueAtTime(80, t0);
-      tone.frequency.exponentialRampToValueAtTime(800, t0 + duration);
-      tone.detune.value = d;
-      const tg = audioCtx.createGain();
-      tg.gain.setValueAtTime(0.02, t0);
-      tg.gain.linearRampToValueAtTime(0.13, t0 + duration);
-      const tf = audioCtx.createBiquadFilter();
-      tf.type = 'lowpass';
-      tf.frequency.setValueAtTime(500, t0);
-      tf.frequency.exponentialRampToValueAtTime(3000, t0 + duration);
-      tone.connect(tf);
-      tf.connect(tg);
-      out(tg, 0.8, 0.5);
-      tone.start(t0);
-      tone.stop(t0 + duration + 0.05);
-      sources.push(tone);
-    });
-
-    // 3) 심장박동 sub thumps (점점 빨라짐)
-    let beatTime = 0;
-    let beatInterval = 0.25;
-    while (beatTime < duration) {
-      const k = audioCtx.createOscillator();
-      const kg = audioCtx.createGain();
-      k.type = 'sine';
-      k.frequency.setValueAtTime(85, t0 + beatTime);
-      k.frequency.exponentialRampToValueAtTime(40, t0 + beatTime + 0.15);
-      kg.gain.setValueAtTime(0.45, t0 + beatTime);
-      kg.gain.exponentialRampToValueAtTime(0.001, t0 + beatTime + 0.2);
-      k.connect(kg);
-      out(kg, 1, 0.2);
-      k.start(t0 + beatTime);
-      k.stop(t0 + beatTime + 0.3);
-      sources.push(k);
-      beatTime += beatInterval;
-      beatInterval = Math.max(0.06, beatInterval * 0.82); // 점점 빨라짐 (가속)
-    }
-
-    drumrollNodes = sources;
-    setTimeout(() => { drumrollNodes = null; }, duration * 1000 + 100);
-  }
-  function stopDrumroll() {
-    if (drumrollNodes) {
-      drumrollNodes.forEach(n => { try { n.stop(); } catch(e){} });
-      drumrollNodes = null;
-    }
-  }
-
-  // 임팩트 BOOM (서브 폭발 + 심벌 크래시)
-  function playImpact() {
-    if (!soundEnabled || !audioCtx) return;
-    playTone(120, 1.2, 'sine', 0.7, 0, { freqEnd: 30, attack: 0.001, wet: 0.5 });
-    playTone(60, 1.0, 'sine', 0.5, 0, { freqEnd: 25, attack: 0.001, wet: 0.4 });
-    playNoise(1.5, 0.28, 0, { filterType: 'highpass', filterFreq: 3000, Q: 0.5, attack: 0.001, wet: 0.8 });
-    playNoise(0.6, 0.35, 0, { filterType: 'bandpass', filterFreq: 6000, Q: 1, attack: 0.001, wet: 0.6 });
-  }
-
-  // 트럼펫 같은 브라스 노트 (디튠 3중 + 비브라토 + 브라스 필터 envelope)
-  function playBrassNote(freq, duration, when = 0, opts = {}) {
-    if (!soundEnabled || !audioCtx) return;
-    const t0 = audioCtx.currentTime + when;
-    const volume = opts.volume ?? 0.13;
-    const sustain = opts.sustain ?? false;
-    const vibrato = opts.vibrato ?? false;
-
-    // 3중 디튠 sawtooth (트럼펫 두툼한 코어 사운드)
-    [-12, 0, 12].forEach(detune => {
-      const osc = audioCtx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, t0);
-      osc.detune.value = detune;
-
-      // 비브라토 (sustained 노트만 - 어택 후 시작)
-      if (vibrato) {
-        const lfo = audioCtx.createOscillator();
-        lfo.frequency.value = 5.5;
-        const lfoGain = audioCtx.createGain();
-        lfoGain.gain.value = 9;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.detune);
-        lfo.start(t0 + 0.18);
-        lfo.stop(t0 + duration);
-      }
-
-      // 브라스 필터 envelope (어택 시 밝게 열렸다가 sustain 시 살짝 닫힘 - 트럼펫 특유의 "빠앙")
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.Q.value = 2;
-      filter.frequency.setValueAtTime(700, t0);
-      filter.frequency.exponentialRampToValueAtTime(4500, t0 + 0.04);
-      filter.frequency.exponentialRampToValueAtTime(2800, t0 + Math.min(0.3, duration));
-
-      // 진폭 envelope
-      const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(volume, t0 + 0.04);
-      if (sustain) {
-        gain.gain.linearRampToValueAtTime(volume * 0.85, t0 + 0.18);
-        gain.gain.setValueAtTime(volume * 0.85, t0 + duration - 0.4);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-      } else {
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-      }
-
-      osc.connect(filter);
-      filter.connect(gain);
-      out(gain, 1, 0.5);
-      osc.start(t0);
-      osc.stop(t0 + duration + 0.05);
-    });
-
-    // 옥타브 위 square wave - 밝기와 입자감 (sustained 노트에서 더 강하게)
-    const sq = audioCtx.createOscillator();
-    sq.type = 'square';
-    sq.frequency.setValueAtTime(freq * 2, t0);
-    const sqGain = audioCtx.createGain();
-    sqGain.gain.setValueAtTime(0, t0);
-    sqGain.gain.linearRampToValueAtTime(volume * (sustain ? 0.25 : 0.18), t0 + 0.04);
-    sqGain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    sq.connect(sqGain);
-    out(sqGain, 1, 0.5);
-    sq.start(t0);
-    sq.stop(t0 + duration + 0.05);
-  }
-
-  // 팡파레 (진짜 빵빠레! - 트럼펫 ta-da 패턴: 딴-딴-딴-딴~~~)
-  function playFanfare() {
-    if (!soundEnabled || !audioCtx) return;
-    // BOOM 임팩트
-    playImpact();
-
-    // 트럼펫 빵빠레 패턴 (C5-E5-G5 짧게 + C6 길게 sustained with vibrato)
-    playBrassNote(523.25, 0.18, 0.10, { volume: 0.14 });           // C5 "딴"
-    playBrassNote(659.25, 0.18, 0.28, { volume: 0.15 });           // E5 "딴"
-    playBrassNote(783.99, 0.18, 0.46, { volume: 0.16 });           // G5 "딴"
-    playBrassNote(1046.5, 1.8, 0.66, { volume: 0.18, sustain: true, vibrato: true }); // C6 "딴~~~"
-
-    // 서브 베이스 보강 (sustained 노트 받쳐주기)
-    playTone(130.81, 1.8, 'sine', 0.32, 0.66, { wet: 0.4 });
-    playTone(65.41, 1.8, 'sine', 0.38, 0.66, { wet: 0.3 });
-    playTone(261.63, 1.8, 'triangle', 0.18, 0.66, { wet: 0.4 });
-
-    // 화음 보강 - sustained 동안 G5, E5도 함께 (3화음 유지)
-    playBrassNote(659.25, 1.6, 0.66, { volume: 0.10, sustain: true, vibrato: true });
-    playBrassNote(783.99, 1.6, 0.66, { volume: 0.10, sustain: true, vibrato: true });
-
-    // 심벌 크래시 (sustained 시작 순간)
-    playNoise(1.5, 0.28, 0.62, { filterType: 'highpass', filterFreq: 4000, Q: 0.5, attack: 0.005, wet: 0.7 });
-
-    // 스파클 데코
-    setTimeout(() => playSparkle(), 800);
-  }
-
-  // 당첨자 카드 차임 (1등은 화려한 화음, 그 외는 종소리)
-  function playChime(rank) {
-    if (!soundEnabled || !audioCtx) return;
-    if (rank === 0) {
-      // 1등: 메이저 화음 + 옥타브 강조
-      [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
-        playTone(f, 0.8, 'sine', 0.13, i * 0.04, { wet: 0.7 });
-        playTone(f * 1.5, 0.4, 'sine', 0.05, i * 0.04, { wet: 0.7 });
-      });
-      playTone(261.63, 0.4, 'sine', 0.15, 0, { wet: 0.3 });
-    } else {
-      // 그 외: 부드러운 종 차임 (배음 3개)
-      const baseFreq = Math.max(440, 880 - rank * 30);
-      [1, 2, 3].forEach((mult, i) => {
-        playTone(baseFreq * mult, 0.55 - i * 0.1, 'sine', 0.10 / mult, i * 0.02, { wet: 0.6 });
-      });
-    }
-  }
-
-  function updateSoundButton() {
-    const btn = $('btn-sound-toggle');
-    if (!btn) return;
-    btn.textContent = soundEnabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
-  }
 
   // URL 설정 확인
   const isConfigured = APPS_SCRIPT_URL && APPS_SCRIPT_URL.startsWith('https://script.google.com/');
@@ -1511,21 +1141,12 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     const numEl = $('countdown-number');
     overlay.classList.add('active');
     const numbers = ['3', '2', '1', '✨'];
-    const voices = ['삼', '이', '일']; // 음성 발화용
-    for (let i = 0; i < numbers.length; i++) {
-      const n = numbers[i];
+    for (const n of numbers) {
       numEl.textContent = n;
       // 애니메이션 재시작 트릭
       numEl.style.animation = 'none';
       void numEl.offsetWidth;
       numEl.style.animation = '';
-      // 음향 + 음성
-      if (i < 3) {
-        playCountdownBeep(i);
-        speakKorean(voices[i]);
-      } else {
-        playSparkle();
-      }
       await new Promise(r => setTimeout(r, 900));
     }
     overlay.classList.remove('active');
@@ -1621,32 +1242,41 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     }
   }
 
+  // ===== 공통 POST 헬퍼 =====
+  // 서버가 LOCK_TIMEOUT(혼잡)으로 응답하면 약간의 백오프 후 자동 재시도.
+  // 네트워크 에러는 재시도하지 않음(사용자의 의도와 다르게 중복 등록될 위험을 막기 위해).
+  async function postWithRetry(payload, maxRetries = 2) {
+    let lastJson = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        lastJson = await res.json();
+        // 락 타임아웃이면 짧게 기다렸다가 다시 시도
+        if (lastJson && lastJson.code === 'LOCK_TIMEOUT' && attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 700 + attempt * 600));
+          continue;
+        }
+        return lastJson;
+      } catch (err) {
+        // 네트워크 실패는 즉시 반환 (중복 등록 위험 회피)
+        return { status: 'error', message: err.message };
+      }
+    }
+    return lastJson || { status: 'error', message: '알 수 없는 오류' };
+  }
+
   // 초청자 추가
   async function addParticipant(data) {
-    try {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'add', ...data })
-      });
-      return await res.json();
-    } catch (err) {
-      return { status: 'error', message: err.message };
-    }
+    return postWithRetry({ action: 'add', ...data });
   }
 
   // 초청자 삭제
   async function removeParticipant(id) {
-    try {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'remove', id })
-      });
-      return await res.json();
-    } catch (err) {
-      return { status: 'error', message: err.message };
-    }
+    return postWithRetry({ action: 'remove', id });
   }
 
   $('btn-refresh').addEventListener('click', fetchData);
@@ -1746,44 +1376,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
 
   // 당첨자를 서버에 저장
   async function saveWinnersToServer(winners) {
-    try {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'save_winners',
-          winners: winners.map(w => ({
-            id: w.id, name: w.name, phone: w.phone, org: w.org
-          }))
-        })
-      });
-      return await res.json();
-    } catch (err) {
-      return { status: 'error', message: err.message };
-    }
+    return postWithRetry({
+      action: 'save_winners',
+      winners: winners.map(w => ({
+        id: w.id, name: w.name, phone: w.phone, org: w.org
+      }))
+    });
   }
 
   // 당첨자 전체 초기화 요청
   async function clearWinnersOnServer() {
-    try {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'clear_winners' })
-      });
-      return await res.json();
-    } catch (err) {
-      return { status: 'error', message: err.message };
-    }
+    return postWithRetry({ action: 'clear_winners' });
   }
 
   // ===== 추첨 (멋진 효과 포함) =====
   async function draw() {
     if (isDrawing) return;
     isDrawing = true;
-
-    // 사용자 제스처에서 오디오 컨텍스트 초기화 (모바일 필수)
-    initAudio();
 
     const attendees = participants.filter(p => p.attended);
     const eligible = attendees.filter(p => !drawnIds.has(p.id));
@@ -1822,18 +1431,14 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     spinningDiv.classList.add('active');
     spinningDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // 🥁 드럼롤 시작 (스피너 도는 동안)
-    startDrumroll(1.2);
-
     // 1.2초간 스피너 보여주기 (긴장감 연출)
     await new Promise(resolve => setTimeout(resolve, 1200));
 
     // 서버에 당첨자 저장 (성공해야 누적 당첨에 포함)
     const saveResult = await saveWinnersToServer(winners);
 
-    // 스피너 + 드럼롤 정지
+    // 스피너 숨김
     spinningDiv.classList.remove('active');
-    stopDrumroll();
 
     if (saveResult.status !== 'ok') {
       $('btn-draw').disabled = false;
@@ -1850,8 +1455,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     list.innerHTML = '';
     resultDiv.style.display = 'block';
 
-    // 🎺 팡파레 + 파티클 효과 발생!
-    playFanfare();
+    // 파티클 효과 발생!
     createConfetti();
 
     // 남은 인원 / 요청 인원 부족 안내
@@ -1877,11 +1481,8 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
         </div>
       `;
       list.appendChild(card);
-      // 각 카드 250ms 간격으로 순차 등장 + 차임 사운드
-      setTimeout(() => {
-        card.classList.add('show');
-        playChime(i);
-      }, 150 + i * 250);
+      // 각 카드 200ms 간격으로 순차 등장
+      setTimeout(() => card.classList.add('show'), 150 + i * 250);
     });
 
     // 결과로 스크롤
@@ -1901,19 +1502,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
   }
   $('btn-draw').addEventListener('click', draw);
   $('btn-redraw').addEventListener('click', draw);
-
-  // 🔊 사운드 토글 버튼
-  $('btn-sound-toggle').addEventListener('click', () => {
-    soundEnabled = !soundEnabled;
-    if (soundEnabled) initAudio();
-    else stopDrumroll();
-    updateSoundButton();
-    // 켤 때 짧은 확인음
-    if (soundEnabled) {
-      initAudio();
-      playTone(880, 0.15, 'sine', 0.15);
-    }
-  });
 
   // 당첨자 초기화 (서버 + 로컬 모두)
   $('btn-reset-winners').addEventListener('click', async () => {
@@ -2012,9 +1600,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmkBAQCuWfDkhA
     }
   }
 
+  // 탭이 백그라운드일 때는 폴링을 중지해 GAS 동시실행 부담을 크게 줄임.
+  // (사용자가 다시 탭을 열면 즉시 1회 동기화)
+  let pollingPaused = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      pollingPaused = true;
+    } else {
+      pollingPaused = false;
+      if (isConfigured) fetchData(); // 돌아오자마자 최신 데이터 한 번 받아오기
+    }
+  });
+
   function startPolling() {
     if (pollingTimer) clearInterval(pollingTimer);
-    pollingTimer = setInterval(fetchData, 10000);
+    pollingTimer = setInterval(() => {
+      if (!pollingPaused) fetchData();
+    }, POLL_INTERVAL_MS);
   }
 
   // 배경 앰비언트 파티클 시작
