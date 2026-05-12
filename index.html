@@ -559,6 +559,157 @@
   .slider-row {
     display: flex; align-items: center; gap: 14px; margin-bottom: 18px;
   }
+
+  /* ===== mode=man 전용 ===== */  /* 미출석자 행의 출석 처리 버튼 */
+  .btn-checkin-row {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ivory);
+    background: linear-gradient(135deg, var(--emerald) 0%, #2a8a65 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow:
+      0 2px 8px rgba(27,110,79,0.3),
+      0 0 0 1px rgba(27,110,79,0.4);
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    font-family: inherit;
+  }
+  .btn-checkin-row:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 12px rgba(27,110,79,0.4),
+      0 0 0 1px rgba(27,110,79,0.5);
+  }
+  .btn-checkin-row:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  /* 출석 처리 직후 잠깐 표시되는 성공 행 (사라지는 애니메이션) */
+  .participant-row.just-checked {
+    background: linear-gradient(135deg, #DFF5E8, #C6EBD3);
+    border-color: rgba(27,110,79,0.35);
+    animation: rowSuccess 1.4s ease-out forwards;
+  }
+  @keyframes rowSuccess {
+    0% { opacity: 1; transform: translateX(0); }
+    60% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(20px); height: 0; padding-top: 0; padding-bottom: 0; margin: 0; border: 0; }
+  }
+
+  /* ===== 당첨자 탭 (회차별 그룹) ===== */
+  .winners-by-round {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: 560px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .winners-by-round::-webkit-scrollbar { width: 6px; }
+  .winners-by-round::-webkit-scrollbar-track { background: var(--cream-2); border-radius: 3px; }
+  .winners-by-round::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--gold-mid), var(--gold));
+    border-radius: 3px;
+  }
+  .round-group {
+    border: 1px solid rgba(184,134,11,0.22);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--ivory) 0%, var(--cream) 100%);
+    overflow: hidden;
+    box-shadow: 0 2px 14px rgba(184,134,11,0.06);
+  }
+  .round-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+    color: var(--gold-light);
+    border-bottom: 1px solid rgba(184,134,11,0.3);
+  }
+  .round-header::before {
+    content: '🎯';
+    font-size: 16px;
+    filter: drop-shadow(0 0 6px rgba(242,210,124,0.6));
+  }
+  .round-title {
+    font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-mid) 60%, var(--gold-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.04em;
+  }
+  .round-meta {
+    margin-left: auto;
+    font-size: 11px;
+    color: rgba(242,210,124,0.75);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .round-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+  }
+  .winner-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--ivory);
+    border: 1px solid rgba(184,134,11,0.14);
+    border-radius: 10px;
+    transition: all 0.2s;
+  }
+  .winner-row:hover {
+    border-color: var(--gold);
+    transform: translateX(2px);
+    box-shadow: 0 2px 10px rgba(212,160,23,0.12);
+  }
+  .winner-rank {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold-mid));
+    color: var(--bronze);
+    font-weight: 700;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--gold);
+    box-shadow: 0 2px 6px rgba(212,160,23,0.25);
+  }
+  .winner-row.rank-1 .winner-rank {
+    background: linear-gradient(135deg, #FFD700, var(--gold), #8B5A00);
+    color: var(--ivory);
+    box-shadow: 0 2px 12px rgba(212,160,23,0.5);
+  }
+  .winner-row-info { flex: 1; min-width: 0; }
+  .winner-row-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .winner-row-name .winner-row-org {
+    font-weight: 400;
+    color: var(--ink-4);
+    font-size: 12px;
+    margin-left: 6px;
+  }
+  .winner-row-meta {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 2px;
+  }
   .slider-value {
     font-family: 'Cormorant Garamond', serif;
     font-size: 32px;
@@ -1037,6 +1188,7 @@
     <div class="tabs">
       <button id="tab-list" class="tab-btn active">초청자 목록 <span class="count-badge" id="count-badge">0</span></button>
       <button id="tab-draw" class="tab-btn">추첨</button>
+      <button id="tab-winners" class="tab-btn">🏆 당첨자 <span class="count-badge" id="winners-count-badge">0</span></button>
     </div>
 
     <div id="panel-list" class="panel active">
@@ -1082,6 +1234,62 @@
         <button id="btn-redraw" style="width: 100%; margin-top: 16px; font-size: 14px;">🎲 다시 추첨</button>
       </div>
     </div>
+
+    <!-- 당첨자 탭: 회차별로 그룹화하여 표시 -->
+    <div id="panel-winners" class="panel">
+      <div id="winners-empty" class="empty-state">아직 추첨된 당첨자가 없습니다.</div>
+      <div id="winners-container" style="display:none;">
+        <div class="list-header">
+          <p style="font-size:14px;">총 <strong id="winners-total">0</strong>명 · <strong id="winners-rounds">0</strong>회차</p>
+          <button id="btn-winners-export" style="font-size: 12px; padding: 6px 12px;">📥 CSV 내보내기</button>
+        </div>
+        <div id="winners-by-round" class="winners-by-round"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 출석 관리 모드 (mode=man) - 두 탭: 출석 체크인 / 미출석자 검색 -->
+  <div id="man-mode" style="display:none;">
+    <div class="tabs">
+      <button id="tab-checkin" class="tab-btn active">📝 출석 체크인</button>
+      <button id="tab-search" class="tab-btn">🔍 미출석자 검색 <span class="count-badge" id="unattended-badge">0</span></button>
+    </div>
+
+    <!-- Tab 1: 출석 체크인 (이름·연락처 입력 → 출석 처리) -->
+    <div id="panel-checkin" class="panel active">
+      <div class="form-box">
+        <p class="form-desc">사전 등록자는 이름·연락처로 출석 확인되며, 명단에 없으신 분은 자동으로 등록됩니다.</p>
+        <div class="form-group">
+          <label>이름 <span class="required">*</span></label>
+          <input type="text" id="man-input-name" placeholder="홍길동" />
+        </div>
+        <div class="form-group">
+          <label>연락처 <span class="required">*</span></label>
+          <input type="text" id="man-input-phone" placeholder="01012345678" />
+        </div>
+        <div class="form-group">
+          <label>초청자 (선택)</label>
+          <input type="text" id="man-input-org" placeholder="초청해주신 분 성함" />
+        </div>
+        <button id="man-btn-add" class="btn-primary">출석 체크인</button>
+        <p id="man-msg" class="msg"></p>
+      </div>
+    </div>
+
+    <!-- Tab 2: 미출석자 검색 → 출석 처리 -->
+    <div id="panel-search" class="panel">
+      <div class="form-box">
+        <p class="form-desc">사전 등록자 중 아직 출석하지 않은 분을 검색해서 출석 처리합니다.</p>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>이름 또는 연락처 검색</label>
+          <input type="text" id="man-search-input" placeholder="이름이나 연락처 일부를 입력하세요" autocomplete="off" />
+        </div>
+        <p id="man-search-info" style="font-size:12px; color:#5f5e5a; margin-top:10px;">미출석 0명</p>
+      </div>
+      <div id="man-search-empty" class="empty-state" style="display:none;">검색 결과가 없습니다.</div>
+      <div id="man-search-list" class="participant-list"></div>
+      <p id="man-search-msg" class="msg" style="text-align:center;"></p>
+    </div>
   </div>
 </div>
 
@@ -1099,6 +1307,8 @@ const POLL_INTERVAL_MS = 25000;
 
 (function() {
   let participants = [];
+  // 당첨자 전체 목록 (회차/이름/연락처/초청자/시간 포함, 회차 오름차순)
+  let winnersAll = [];
   let pollingTimer = null;
   let isDrawing = false;
   // 누적 당첨자 ID 집합 (서버에서 동기화됨, 한 번 당첨된 사람은 제외)
@@ -1613,9 +1823,10 @@ const POLL_INTERVAL_MS = 25000;
       if (json.status !== 'ok') throw new Error(json.message || '오류');
       participants = json.data || [];
 
-      // 서버의 누적 당첨자로 drawnIds 동기화
+      // 서버의 누적 당첨자로 drawnIds 동기화 + 당첨자 탭 표시용 전체 목록 보관
+      winnersAll = json.winners || [];
       drawnIds.clear();
-      (json.winners || []).forEach(w => drawnIds.add(w.id));
+      winnersAll.forEach(w => drawnIds.add(w.id));
 
       setStatus('ok', '연결됨 (자동 동기화)');
       updateUI();
@@ -1657,6 +1868,11 @@ const POLL_INTERVAL_MS = 25000;
     return postWithRetry({ action: 'add', ...data });
   }
 
+  // ID로 출석 처리 (mode=man의 검색 결과 행에서 사용)
+  async function checkInById(id) {
+    return postWithRetry({ action: 'check_in_by_id', id });
+  }
+
   // 초청자 삭제
   async function removeParticipant(id) {
     return postWithRetry({ action: 'remove', id });
@@ -1675,10 +1891,11 @@ const POLL_INTERVAL_MS = 25000;
     $('mode-admin').classList.toggle('active', mode === 'admin');
     $('user-mode').style.display = mode === 'user' ? 'block' : 'none';
     $('admin-mode').style.display = mode === 'admin' ? 'block' : 'none';
+    $('man-mode').style.display = mode === 'man' ? 'block' : 'none';
   }
 
   // 관리자 탭
-  const tabs = ['list', 'draw'];
+  const tabs = ['list', 'draw', 'winners'];
   tabs.forEach(name => {
     $('tab-' + name).addEventListener('click', () => {
       tabs.forEach(n => {
@@ -1687,6 +1904,177 @@ const POLL_INTERVAL_MS = 25000;
       });
     });
   });
+
+  // ===== mode=man 탭 전환 =====
+  const manTabs = ['checkin', 'search'];
+  manTabs.forEach(name => {
+    $('tab-' + name).addEventListener('click', () => {
+      manTabs.forEach(n => {
+        $('tab-' + n).classList.toggle('active', n === name);
+        $('panel-' + n).classList.toggle('active', n === name);
+      });
+      // 검색 탭으로 이동하면 입력창에 자동 포커스
+      if (name === 'search') {
+        setTimeout(() => $('man-search-input').focus(), 50);
+      }
+    });
+  });
+
+  // ===== mode=man Tab 1: 출석 체크인 =====
+  async function manSubmitCheckin() {
+    const name = $('man-input-name').value.trim();
+    const phone = $('man-input-phone').value.trim();
+    const org = $('man-input-org').value.trim();
+    const msg = $('man-msg');
+
+    if (!name || !phone) {
+      msg.className = 'msg error';
+      msg.textContent = '이름과 연락처는 필수입니다.';
+      return;
+    }
+
+    $('man-btn-add').disabled = true;
+    msg.className = 'msg';
+    msg.textContent = '등록 중...';
+
+    const result = await addParticipant({ name, phone, org: org || '-' });
+    $('man-btn-add').disabled = false;
+
+    if (result.status === 'checked_in') {
+      $('man-input-name').value = '';
+      $('man-input-phone').value = '';
+      $('man-input-org').value = '';
+      msg.className = 'msg success';
+      msg.textContent = `✓ ${result.name}님, 출석 처리되었습니다 (${result.attended})`;
+      setTimeout(() => { msg.textContent = ''; }, 4000);
+      await fetchData();
+    } else if (result.status === 'new') {
+      $('man-input-name').value = '';
+      $('man-input-phone').value = '';
+      $('man-input-org').value = '';
+      msg.className = 'msg success';
+      msg.textContent = `✓ ${result.name}님, 신규 등록 후 출석 처리되었습니다 (${result.attended})`;
+      setTimeout(() => { msg.textContent = ''; }, 4000);
+      await fetchData();
+    } else if (result.status === 'already') {
+      msg.className = 'msg error';
+      msg.textContent = `이미 ${result.attended}에 출석 처리되었습니다.`;
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = '등록 실패: ' + (result.message || '알 수 없는 오류');
+    }
+    setTimeout(() => $('man-input-name').focus(), 0);
+  }
+
+  $('man-btn-add').addEventListener('click', manSubmitCheckin);
+  ['man-input-name', 'man-input-phone', 'man-input-org'].forEach(id => {
+    $(id).addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') manSubmitCheckin();
+    });
+  });
+
+  // ===== mode=man Tab 2: 미출석자 검색 / 출석 처리 =====
+  let manSearchQuery = '';
+
+  $('man-search-input').addEventListener('input', (e) => {
+    manSearchQuery = e.target.value.trim();
+    renderManSearchList();
+  });
+
+  // 검색어와 참가자 데이터로 미출석자 목록을 그린다.
+  // - 검색어 비어있으면 미출석자 전체 표시
+  // - 검색어 있으면 이름·연락처(공백 제거)에 매칭되는 항목만
+  function renderManSearchList() {
+    const container = $('man-search-list');
+    const emptyEl = $('man-search-empty');
+    const infoEl = $('man-search-info');
+
+    const unattended = participants.filter(p => !p.attended);
+    const totalUnattended = unattended.length;
+
+    let filtered = unattended;
+    if (manSearchQuery) {
+      const q = manSearchQuery.toLowerCase();
+      const qDigits = manSearchQuery.replace(/\D/g, '');
+      filtered = unattended.filter(p => {
+        const nameMatch = String(p.name).toLowerCase().includes(q);
+        // 연락처는 숫자만 추출해서 비교 (하이픈/공백 무시)
+        const phoneDigits = String(p.phone).replace(/\D/g, '');
+        const phoneMatch = qDigits.length > 0 && phoneDigits.includes(qDigits);
+        const orgMatch = String(p.org).toLowerCase().includes(q);
+        return nameMatch || phoneMatch || orgMatch;
+      });
+    }
+
+    // 카운트 갱신
+    $('unattended-badge').textContent = totalUnattended;
+    if (manSearchQuery) {
+      infoEl.textContent = `미출석 ${totalUnattended}명 중 ${filtered.length}명 일치`;
+    } else {
+      infoEl.textContent = `미출석 ${totalUnattended}명`;
+    }
+
+    // 표시
+    container.innerHTML = '';
+    if (filtered.length === 0) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = manSearchQuery
+        ? '검색 결과가 없습니다.'
+        : (totalUnattended === 0 ? '모든 등록자가 출석 완료되었습니다 🎉' : '미출석자가 없습니다.');
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    filtered.forEach((p, i) => {
+      const row = document.createElement('div');
+      row.className = 'participant-row';
+      row.dataset.id = p.id;
+      row.innerHTML = `
+        <div class="participant-num">${i + 1}</div>
+        <div class="participant-info">
+          <div class="participant-name">${escapeHtml(p.name)} <span class="participant-org">${escapeHtml(p.org)}</span></div>
+          <div class="participant-meta">${escapeHtml(p.phone)} · 등록 ${escapeHtml(p.time)}</div>
+        </div>
+        <button class="btn-checkin-row" data-id="${p.id}" data-name="${escapeHtml(p.name)}">✓ 출석 처리</button>
+      `;
+      container.appendChild(row);
+    });
+
+    // 출석 처리 버튼 핸들러
+    container.querySelectorAll('.btn-checkin-row').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const msg = $('man-search-msg');
+
+        btn.disabled = true;
+        btn.textContent = '처리 중...';
+
+        const result = await checkInById(id);
+
+        if (result.status === 'checked_in' || result.status === 'already') {
+          const verb = result.status === 'checked_in' ? '출석 처리되었습니다' : '이미 출석 처리되어 있습니다';
+          msg.className = 'msg success';
+          msg.textContent = `✓ ${result.name || name}님 ${verb} (${result.attended})`;
+          setTimeout(() => { msg.textContent = ''; }, 3500);
+
+          // 행에 성공 애니메이션 → 끝나면 fetchData로 목록 자동 갱신
+          const row = btn.closest('.participant-row');
+          if (row) {
+            row.classList.add('just-checked');
+            btn.style.display = 'none';
+          }
+          // 애니메이션 끝난 후 서버 동기화
+          setTimeout(() => { fetchData(); }, 1500);
+        } else {
+          msg.className = 'msg error';
+          msg.textContent = '출석 처리 실패: ' + (result.message || '알 수 없는 오류');
+          btn.disabled = false;
+          btn.textContent = '✓ 출석 처리';
+        }
+      });
+    });
+  }
 
   // 초청자 추가
   $('btn-add').addEventListener('click', async () => {
@@ -1840,6 +2228,21 @@ const POLL_INTERVAL_MS = 25000;
 
     // 저장 성공 후 로컬 상태 갱신
     winners.forEach(w => drawnIds.add(w.id));
+    // 당첨자 탭에 즉시 반영되도록 winnersAll에도 추가
+    // (서버 저장 시간은 다음 폴링/fetchData에서 정확한 값으로 덮어쓰임)
+    const nowKR = new Date().toLocaleTimeString('ko-KR', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul'
+    });
+    winners.forEach(w => {
+      winnersAll.push({
+        round: saveResult.round,
+        id: w.id,
+        name: w.name,
+        phone: w.phone,
+        org: w.org || '-',
+        time: nowKR
+      });
+    });
 
     const list = $('winners-list');
     list.innerHTML = '';
@@ -1928,6 +2331,7 @@ const POLL_INTERVAL_MS = 25000;
     }
 
     drawnIds.clear();
+    winnersAll = [];
     $('draw-result').style.display = 'none';
     updateUI();
     alert('당첨자 명단이 초기화되었습니다.');
@@ -2005,7 +2409,107 @@ const POLL_INTERVAL_MS = 25000;
         });
       });
     }
+
+    // mode=man 검색 탭의 미출석자 목록도 함께 갱신
+    // (폴링이나 다른 클라이언트의 변경이 반영되도록)
+    renderManSearchList();
+
+    // 관리자 모드의 당첨자 탭 갱신
+    renderWinnersTab();
   }
+
+  // ===== 당첨자 탭 렌더 (회차별 그룹) =====
+  function renderWinnersTab() {
+    const badge = $('winners-count-badge');
+    const totalEl = $('winners-total');
+    const roundsEl = $('winners-rounds');
+    const empty = $('winners-empty');
+    const wrap = $('winners-container');
+    const list = $('winners-by-round');
+    if (!list) return; // 안전 가드
+
+    const total = winnersAll.length;
+    badge.textContent = total;
+
+    if (total === 0) {
+      empty.style.display = 'block';
+      wrap.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+
+    // 회차별로 그룹화
+    const byRound = new Map();
+    winnersAll.forEach(w => {
+      const r = w.round || 0;
+      if (!byRound.has(r)) byRound.set(r, []);
+      byRound.get(r).push(w);
+    });
+    const rounds = Array.from(byRound.keys()).sort((a, b) => b - a); // 최신 회차가 위로
+
+    totalEl.textContent = total;
+    roundsEl.textContent = rounds.length;
+    empty.style.display = 'none';
+    wrap.style.display = 'block';
+
+    list.innerHTML = '';
+    rounds.forEach(round => {
+      const winners = byRound.get(round);
+      // 회차 시간은 그룹 내 첫 항목의 time (같은 회차는 같은 저장 시각)
+      const time = winners[0] && winners[0].time ? winners[0].time : '';
+
+      const group = document.createElement('div');
+      group.className = 'round-group';
+      group.innerHTML = `
+        <div class="round-header">
+          <span class="round-title">${escapeHtml(String(round))}회차</span>
+          <span class="round-meta">${time ? escapeHtml(time) + ' · ' : ''}${winners.length}명 당첨</span>
+        </div>
+        <div class="round-body"></div>
+      `;
+      const body = group.querySelector('.round-body');
+      winners.forEach((w, i) => {
+        const row = document.createElement('div');
+        row.className = 'winner-row' + (i === 0 ? ' rank-1' : '');
+        row.innerHTML = `
+          <div class="winner-rank">${i + 1}</div>
+          <div class="winner-row-info">
+            <div class="winner-row-name">${escapeHtml(w.name)}<span class="winner-row-org">${escapeHtml(w.org || '-')}</span></div>
+            <div class="winner-row-meta">${escapeHtml(w.phone)}</div>
+          </div>
+        `;
+        body.appendChild(row);
+      });
+      list.appendChild(group);
+    });
+  }
+
+  // 당첨자 CSV 내보내기
+  $('btn-winners-export').addEventListener('click', () => {
+    if (winnersAll.length === 0) return;
+    let csv = '회차,순번,이름,연락처,초청자,당첨시간\n';
+    // 회차 오름차순, 그룹 내 순번
+    const byRound = new Map();
+    winnersAll.forEach(w => {
+      const r = w.round || 0;
+      if (!byRound.has(r)) byRound.set(r, []);
+      byRound.get(r).push(w);
+    });
+    const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
+    rounds.forEach(r => {
+      byRound.get(r).forEach((w, i) => {
+        // 연락처는 ="..." 형식으로 감싸서 엑셀이 숫자로 자동변환하는 것을 방지
+        csv += `${r},${i + 1},"${w.name}","=""${w.phone}""","${w.org || '-'}","${w.time || ''}"\n`;
+      });
+    });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '당첨자목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
   // 탭이 백그라운드일 때는 폴링을 중지해 GAS 동시실행 부담을 크게 줄임.
   // (사용자가 다시 탭을 열면 즉시 1회 동기화)
@@ -2034,9 +2538,10 @@ const POLL_INTERVAL_MS = 25000;
     setStatus('error', 'URL 미설정');
     $('config-warning').style.display = 'block';
   } else {
-    // mode-switch는 표시하지 않음 (관리자는 URL에 ?mode=admin 붙여서 접근)
+    // mode-switch는 표시하지 않음 (관리자는 URL에 ?mode=admin / ?mode=man 붙여서 접근)
     const params = new URLSearchParams(location.search);
-    const mode = params.get('mode') === 'admin' ? 'admin' : 'user';
+    const modeParam = params.get('mode');
+    const mode = (modeParam === 'admin' || modeParam === 'man') ? modeParam : 'user';
     switchMode(mode);
     fetchData();
     startPolling();
