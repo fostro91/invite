@@ -605,11 +605,35 @@
   .winners-by-round {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    max-height: 560px;
+    gap: 14px;
+    max-height: 65vh;
     overflow-y: auto;
     padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
   }
+  /* 회차 펼치기/접기 전체 컨트롤 */
+  .winners-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .winners-toolbar .wt-spacer { flex: 1; }
+  .winners-toolbar button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  /* 회차 헤더 클릭 → 접기/펼치기 */
+  .round-header { cursor: pointer; user-select: none; }
+  .round-chevron {
+    margin-left: 10px;
+    font-size: 12px;
+    color: rgba(242,210,124,0.9);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .round-group.collapsed .round-chevron { transform: rotate(-90deg); }
+  .round-group.collapsed .round-body { display: none; }
   .winners-by-round::-webkit-scrollbar { width: 6px; }
   .winners-by-round::-webkit-scrollbar-track { background: var(--cream-2); border-radius: 3px; }
   .winners-by-round::-webkit-scrollbar-thumb {
@@ -1106,6 +1130,107 @@
     100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
   }
 
+  /* ===== 학생 여부 체크박스 ===== */
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--ivory);
+    border: 1.5px solid rgba(184,134,11,0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .checkbox-row:hover { border-color: var(--gold-mid); background: #FFFFFF; }
+  .checkbox-row.checked {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, var(--gold-pale), var(--ivory));
+    box-shadow: 0 0 0 3px rgba(212,160,23,0.1);
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 22px; height: 22px;
+    accent-color: var(--gold-deep);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .checkbox-row .checkbox-text {
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .checkbox-row .checkbox-sub {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-left: auto;
+    font-weight: 400;
+  }
+
+  /* ===== 학생 배지 (목록용) ===== */
+  .attend-badge.student {
+    background: linear-gradient(135deg, #E6EFFF, #D2E2FF);
+    color: #2B5BBF;
+    border: 1px solid rgba(43,91,191,0.25);
+  }
+
+  /* ===== 추첨 대상 세그먼트 컨트롤 ===== */
+  .draw-filter {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    padding: 5px;
+    background: linear-gradient(135deg, var(--cream-2), var(--ivory));
+    border-radius: 12px;
+    border: 1px solid rgba(184,134,11,0.18);
+  }
+  .draw-filter label {
+    flex: 1;
+    position: relative;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .draw-filter input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .draw-filter label span {
+    display: block;
+    text-align: center;
+    padding: 9px 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-3);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .draw-filter input[type="radio"]:checked + span {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+    color: var(--gold-light);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(184,134,11,0.2);
+  }
+
+  /* 당첨자 행/카드의 학생 태그 */
+  .winner-row-name .winner-student-tag,
+  .winner-name .winner-student-tag,
+  .participant-name .name-student-tag {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #2B5BBF;
+    background: #E6EFFF;
+    border: 1px solid rgba(43,91,191,0.25);
+    border-radius: 8px;
+    padding: 1px 6px;
+    vertical-align: middle;
+  }
+
   /* ===== 모바일 ===== */
   @media (max-width: 480px) {
     body { padding: 12px; }
@@ -1177,6 +1302,13 @@
         <label>초청자 (선택)</label>
         <input type="text" id="input-org" placeholder="초청해주신 분 성함" />
       </div>
+      <div class="form-group">
+        <label class="checkbox-row" id="input-student-row">
+          <input type="checkbox" id="input-student" />
+          <span class="checkbox-text">🎓 학생입니다</span>
+          <span class="checkbox-sub">학생이면 체크해주세요</span>
+        </label>
+      </div>
       <button id="btn-add" class="btn-primary">출석 체크인</button>
       <p id="msg" class="msg"></p>
     </div>
@@ -1198,7 +1330,20 @@
           <p style="font-size:14px;">총 <strong id="total-count">0</strong>명 · 출석 <strong id="attended-count" style="color:#1d9e75;">0</strong>명</p>
           <button id="btn-export" style="font-size: 12px; padding: 6px 12px;">📥 CSV 내보내기</button>
         </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <input type="text" id="list-search" placeholder="이름 · 연락처 · 초청자 검색" autocomplete="off" />
+        </div>
+        <div class="draw-filter" id="list-status-filter" style="margin-bottom:12px;">
+          <label><input type="radio" name="list-status" value="all" checked /><span>전체</span></label>
+          <label><input type="radio" name="list-status" value="attended" /><span>출석</span></label>
+          <label><input type="radio" name="list-status" value="unattended" /><span>미출석</span></label>
+          <label><input type="radio" name="list-status" value="student" /><span>🎓 학생</span></label>
+        </div>
+        <p id="list-info" style="font-size:12px; color:#7B6A4A; margin-bottom:10px;"></p>
         <div id="participant-list" class="participant-list"></div>
+        <div id="list-loadmore-wrap" style="text-align:center; margin-top:12px; display:none;">
+          <button id="btn-list-loadmore" style="font-size:13px; padding:8px 18px;">더 보기</button>
+        </div>
       </div>
     </div>
 
@@ -1206,6 +1351,12 @@
       <div class="form-box">
         <p class="form-desc">출석 처리된 초청자 중에서만 추첨됩니다. 한 번 당첨된 사람은 자동으로 제외되며, 당첨 결과는 구글 시트의 "당첨자" 시트에 회차별로 저장됩니다.</p>
         <p id="draw-pool-info" style="font-size:12px; color:#5f5e5a; margin-bottom:10px;">출석 0명 · 누적 당첨 0명 · 남은 대상자 0명</p>
+        <label style="font-size: 13px; color: #5f5e5a; display: block; margin-bottom: 8px;">추첨 대상</label>
+        <div class="draw-filter" id="draw-filter">
+          <label><input type="radio" name="draw-filter" value="nonstudent" /><span>성인</span></label>
+          <label><input type="radio" name="draw-filter" value="student" /><span>🎓 학생</span></label>
+          <label><input type="radio" name="draw-filter" value="all" checked /><span>전체</span></label>
+        </div>
         <label style="font-size: 13px; color: #5f5e5a; display: block; margin-bottom: 8px;">당첨자 수</label>
         <div class="slider-row">
           <input type="range" min="1" max="10" value="1" id="winner-count" step="1" />
@@ -1243,6 +1394,12 @@
           <p style="font-size:14px;">총 <strong id="winners-total">0</strong>명 · <strong id="winners-rounds">0</strong>회차</p>
           <button id="btn-winners-export" style="font-size: 12px; padding: 6px 12px;">📥 CSV 내보내기</button>
         </div>
+        <div class="winners-toolbar">
+          <span style="font-size:12px; color:#7B6A4A;">회차 제목을 누르면 접거나 펼칠 수 있어요</span>
+          <span class="wt-spacer"></span>
+          <button id="btn-rounds-expand">전체 펼치기</button>
+          <button id="btn-rounds-collapse">전체 접기</button>
+        </div>
         <div id="winners-by-round" class="winners-by-round"></div>
       </div>
     </div>
@@ -1270,6 +1427,13 @@
         <div class="form-group">
           <label>초청자 (선택)</label>
           <input type="text" id="man-input-org" placeholder="초청해주신 분 성함" />
+        </div>
+        <div class="form-group">
+          <label class="checkbox-row" id="man-input-student-row">
+            <input type="checkbox" id="man-input-student" />
+            <span class="checkbox-text">🎓 학생</span>
+            <span class="checkbox-sub">학생이면 체크</span>
+          </label>
         </div>
         <button id="man-btn-add" class="btn-primary">출석 체크인</button>
         <p id="man-msg" class="msg"></p>
@@ -1702,6 +1866,43 @@ const POLL_INTERVAL_MS = 25000;
     return div.innerHTML;
   }
 
+  // ===== 학생 체크박스 시각 효과(.checked 클래스) 동기화 =====
+  function syncCheckboxRow(inputId) {
+    const input = $(inputId);
+    if (!input) return;
+    const row = input.closest('.checkbox-row');
+    if (row) row.classList.toggle('checked', input.checked);
+  }
+  ['input-student', 'man-input-student'].forEach(id => {
+    const el = $(id);
+    if (el) {
+      el.addEventListener('change', () => syncCheckboxRow(id));
+    }
+  });
+
+  // ===== 추첨 대상 필터 =====
+  // 'all' | 'student' | 'nonstudent'
+  function getDrawFilterMode() {
+    const el = document.querySelector('input[name="draw-filter"]:checked');
+    return el ? el.value : 'all';
+  }
+  // 현재 필터 기준 추첨 가능 풀(출석 + 미당첨 + 학생필터)
+  function eligibleByFilter() {
+    const mode = getDrawFilterMode();
+    let pool = participants.filter(p => p.attended && !drawnIds.has(p.id));
+    if (mode === 'student') pool = pool.filter(p => p.isStudent);
+    else if (mode === 'nonstudent') pool = pool.filter(p => !p.isStudent);
+    return pool;
+  }
+  function drawFilterLabel() {
+    const m = getDrawFilterMode();
+    return m === 'student' ? '학생' : (m === 'nonstudent' ? '성인' : '전체');
+  }
+  // 필터 변경 시 슬라이더/안내문 즉시 갱신
+  document.querySelectorAll('input[name="draw-filter"]').forEach(r => {
+    r.addEventListener('change', updateUI);
+  });
+
   // ===== 배경 앰비언트 파티클 (느리게 떠다니는 골드 빛) =====
   function initAmbient() {
     const container = $('ambient');
@@ -1925,6 +2126,7 @@ const POLL_INTERVAL_MS = 25000;
     const name = $('man-input-name').value.trim();
     const phone = $('man-input-phone').value.trim();
     const org = $('man-input-org').value.trim();
+    const isStudent = $('man-input-student').checked;
     const msg = $('man-msg');
 
     if (!name || !phone) {
@@ -1937,13 +2139,15 @@ const POLL_INTERVAL_MS = 25000;
     msg.className = 'msg';
     msg.textContent = '등록 중...';
 
-    const result = await addParticipant({ name, phone, org: org || '-' });
+    const result = await addParticipant({ name, phone, org: org || '-', isStudent });
     $('man-btn-add').disabled = false;
 
     if (result.status === 'checked_in') {
       $('man-input-name').value = '';
       $('man-input-phone').value = '';
       $('man-input-org').value = '';
+      $('man-input-student').checked = false;
+      syncCheckboxRow('man-input-student');
       msg.className = 'msg success';
       msg.textContent = `✓ ${result.name}님, 출석 처리되었습니다 (${result.attended})`;
       setTimeout(() => { msg.textContent = ''; }, 4000);
@@ -1952,6 +2156,8 @@ const POLL_INTERVAL_MS = 25000;
       $('man-input-name').value = '';
       $('man-input-phone').value = '';
       $('man-input-org').value = '';
+      $('man-input-student').checked = false;
+      syncCheckboxRow('man-input-student');
       msg.className = 'msg success';
       msg.textContent = `✓ ${result.name}님, 신규 등록 후 출석 처리되었습니다 (${result.attended})`;
       setTimeout(() => { msg.textContent = ''; }, 4000);
@@ -2008,10 +2214,16 @@ const POLL_INTERVAL_MS = 25000;
 
     // 카운트 갱신
     $('unattended-badge').textContent = totalUnattended;
+
+    const MAN_CAP = 60; // 한 번에 표시할 최대 행 수 (1000명 대응)
+    const shown = filtered.slice(0, MAN_CAP);
+
     if (manSearchQuery) {
-      infoEl.textContent = `미출석 ${totalUnattended}명 중 ${filtered.length}명 일치`;
+      infoEl.textContent = `미출석 ${totalUnattended}명 중 ${filtered.length}명 일치`
+        + (filtered.length > MAN_CAP ? ` · 상위 ${MAN_CAP}명 표시 (검색으로 좁혀주세요)` : '');
     } else {
-      infoEl.textContent = `미출석 ${totalUnattended}명`;
+      infoEl.textContent = `미출석 ${totalUnattended}명`
+        + (filtered.length > MAN_CAP ? ` · 상위 ${MAN_CAP}명 표시 (검색으로 좁혀주세요)` : '');
     }
 
     // 표시
@@ -2025,62 +2237,62 @@ const POLL_INTERVAL_MS = 25000;
     }
     emptyEl.style.display = 'none';
 
-    filtered.forEach((p, i) => {
-      const row = document.createElement('div');
-      row.className = 'participant-row';
-      row.dataset.id = p.id;
-      row.innerHTML = `
-        <div class="participant-num">${i + 1}</div>
-        <div class="participant-info">
-          <div class="participant-name">${escapeHtml(p.name)} <span class="participant-org">${escapeHtml(p.org)}</span></div>
-          <div class="participant-meta">${escapeHtml(p.phone)} · 등록 ${escapeHtml(p.time)}</div>
-        </div>
-        <button class="btn-checkin-row" data-id="${p.id}" data-name="${escapeHtml(p.name)}">✓ 출석 처리</button>
-      `;
-      container.appendChild(row);
+    let html = '';
+    shown.forEach((p, i) => {
+      const stTag = p.isStudent ? '<span class="name-student-tag">🎓 학생</span>' : '';
+      html += '<div class="participant-row" data-id="' + escapeHtml(p.id) + '">'
+        + '<div class="participant-num">' + (i + 1) + '</div>'
+        + '<div class="participant-info">'
+        + '<div class="participant-name">' + escapeHtml(p.name) + stTag
+        + ' <span class="participant-org">' + escapeHtml(p.org) + '</span></div>'
+        + '<div class="participant-meta">' + escapeHtml(p.phone) + ' · 등록 ' + escapeHtml(p.time) + '</div>'
+        + '</div>'
+        + '<button class="btn-checkin-row" data-id="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.name) + '">✓ 출석 처리</button>'
+        + '</div>';
     });
-
-    // 출석 처리 버튼 핸들러
-    container.querySelectorAll('.btn-checkin-row').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-        const msg = $('man-search-msg');
-
-        btn.disabled = true;
-        btn.textContent = '처리 중...';
-
-        const result = await checkInById(id);
-
-        if (result.status === 'checked_in' || result.status === 'already') {
-          const verb = result.status === 'checked_in' ? '출석 처리되었습니다' : '이미 출석 처리되어 있습니다';
-          msg.className = 'msg success';
-          msg.textContent = `✓ ${result.name || name}님 ${verb} (${result.attended})`;
-          setTimeout(() => { msg.textContent = ''; }, 3500);
-
-          // 행에 성공 애니메이션 → 끝나면 fetchData로 목록 자동 갱신
-          const row = btn.closest('.participant-row');
-          if (row) {
-            row.classList.add('just-checked');
-            btn.style.display = 'none';
-          }
-          // 애니메이션 끝난 후 서버 동기화
-          setTimeout(() => { fetchData(); }, 1500);
-        } else {
-          msg.className = 'msg error';
-          msg.textContent = '출석 처리 실패: ' + (result.message || '알 수 없는 오류');
-          btn.disabled = false;
-          btn.textContent = '✓ 출석 처리';
-        }
-      });
-    });
+    container.innerHTML = html;
   }
+
+  // 미출석자 검색 목록의 '출석 처리' (이벤트 위임 — 리스너 1개)
+  $('man-search-list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-checkin-row');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    const msg = $('man-search-msg');
+
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+
+    const result = await checkInById(id);
+
+    if (result.status === 'checked_in' || result.status === 'already') {
+      const verb = result.status === 'checked_in' ? '출석 처리되었습니다' : '이미 출석 처리되어 있습니다';
+      msg.className = 'msg success';
+      msg.textContent = `✓ ${result.name || name}님 ${verb} (${result.attended})`;
+      setTimeout(() => { msg.textContent = ''; }, 3500);
+
+      // 행에 성공 애니메이션 → 끝나면 fetchData로 목록 자동 갱신
+      const row = btn.closest('.participant-row');
+      if (row) {
+        row.classList.add('just-checked');
+        btn.style.display = 'none';
+      }
+      setTimeout(() => { fetchData(); }, 1500);
+    } else {
+      msg.className = 'msg error';
+      msg.textContent = '출석 처리 실패: ' + (result.message || '알 수 없는 오류');
+      btn.disabled = false;
+      btn.textContent = '✓ 출석 처리';
+    }
+  });
 
   // 초청자 추가
   $('btn-add').addEventListener('click', async () => {
     const name = $('input-name').value.trim();
     const phone = $('input-phone').value.trim();
     const org = $('input-org').value.trim();
+    const isStudent = $('input-student').checked;
     const msg = $('msg');
 
     if (!name || !phone) {
@@ -2093,7 +2305,7 @@ const POLL_INTERVAL_MS = 25000;
     msg.className = 'msg';
     msg.textContent = '등록 중...';
 
-    const result = await addParticipant({ name, phone, org: org || '-' });
+    const result = await addParticipant({ name, phone, org: org || '-', isStudent });
 
     $('btn-add').disabled = false;
 
@@ -2102,6 +2314,8 @@ const POLL_INTERVAL_MS = 25000;
       $('input-name').value = '';
       $('input-phone').value = '';
       $('input-org').value = '';
+      $('input-student').checked = false;
+      syncCheckboxRow('input-student');
       msg.className = 'msg success';
       msg.textContent = `✓ ${result.name}님, 환영합니다! 출석 처리되었습니다 (${result.attended})`;
       setTimeout(() => { msg.textContent = ''; }, 4000);
@@ -2111,6 +2325,8 @@ const POLL_INTERVAL_MS = 25000;
       $('input-name').value = '';
       $('input-phone').value = '';
       $('input-org').value = '';
+      $('input-student').checked = false;
+      syncCheckboxRow('input-student');
       msg.className = 'msg success';
       msg.textContent = `✓ ${result.name}님, 신규 등록 후 출석 처리되었습니다 (${result.attended})`;
       setTimeout(() => { msg.textContent = ''; }, 4000);
@@ -2127,10 +2343,10 @@ const POLL_INTERVAL_MS = 25000;
   // CSV 내보내기
   $('btn-export').addEventListener('click', () => {
     if (participants.length === 0) return;
-    let csv = '번호,이름,연락처,초청자,등록시간,출석시간\n';
+    let csv = '번호,이름,연락처,초청자,학생여부,등록시간,출석시간\n';
     participants.forEach((p, i) => {
       // 연락처는 ="..." 형식으로 감싸서 엑셀이 숫자로 자동변환하는 것을 방지
-      csv += `${i + 1},"${p.name}","=""${p.phone}""","${p.org}","${p.time}","${p.attended || ''}"\n`;
+      csv += `${i + 1},"${p.name}","=""${p.phone}""","${p.org}","${p.isStudent ? '학생' : ''}","${p.time}","${p.attended || ''}"\n`;
     });
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -2150,7 +2366,7 @@ const POLL_INTERVAL_MS = 25000;
     return postWithRetry({
       action: 'save_winners',
       winners: winners.map(w => ({
-        id: w.id, name: w.name, phone: w.phone, org: w.org
+        id: w.id, name: w.name, phone: w.phone, org: w.org, isStudent: !!w.isStudent
       }))
     });
   }
@@ -2169,8 +2385,10 @@ const POLL_INTERVAL_MS = 25000;
     initAudio();
 
     const attendees = participants.filter(p => p.attended);
-    const eligible = attendees.filter(p => !drawnIds.has(p.id));
+    const eligible = eligibleByFilter();
     const requested = parseInt($('winner-count').value);
+    const fmode = getDrawFilterMode();
+    const flabel = drawFilterLabel();
 
     if (attendees.length === 0) {
       alert('출석한 초청자가 없습니다.');
@@ -2178,7 +2396,15 @@ const POLL_INTERVAL_MS = 25000;
       return;
     }
     if (eligible.length === 0) {
-      alert('남은 추첨 대상자가 없습니다.\n"당첨자 초기화" 버튼을 눌러 다시 추첨할 수 있습니다.');
+      let m;
+      if (fmode === 'student') {
+        m = '추첨 가능한 학생이 없습니다.\n(출석한 학생이 모두 당첨되었거나, 출석한 학생이 없습니다.)';
+      } else if (fmode === 'nonstudent') {
+        m = '추첨 가능한 성인이 없습니다.\n(출석한 성인이 모두 당첨되었거나, 출석한 성인이 없습니다.)';
+      } else {
+        m = '남은 추첨 대상자가 없습니다.\n"당첨자 초기화" 버튼을 눌러 다시 추첨할 수 있습니다.';
+      }
+      alert(m);
       isDrawing = false;
       return;
     }
@@ -2228,6 +2454,8 @@ const POLL_INTERVAL_MS = 25000;
 
     // 저장 성공 후 로컬 상태 갱신
     winners.forEach(w => drawnIds.add(w.id));
+    // 새로 추첨한 회차는 당첨자 탭에서 펼쳐진 상태로 보이게
+    if (typeof expandedRounds !== 'undefined') expandedRounds.add(saveResult.round);
     // 당첨자 탭에 즉시 반영되도록 winnersAll에도 추가
     // (서버 저장 시간은 다음 폴링/fetchData에서 정확한 값으로 덮어쓰임)
     const nowKR = new Date().toLocaleTimeString('ko-KR', {
@@ -2240,7 +2468,8 @@ const POLL_INTERVAL_MS = 25000;
         name: w.name,
         phone: w.phone,
         org: w.org || '-',
-        time: nowKR
+        time: nowKR,
+        isStudent: !!w.isStudent
       });
     });
 
@@ -2256,9 +2485,9 @@ const POLL_INTERVAL_MS = 25000;
     const info = $('draw-info');
     if (info) {
       const remaining = eligible.length - winners.length;
-      let infoText = `🎯 ${saveResult.round}회차 · 이번 ${winners.length}명 당첨 · 누적 ${drawnIds.size}명 · 남은 대상자 ${remaining}명`;
+      let infoText = `🎯 ${saveResult.round}회차 · [${flabel}] 이번 ${winners.length}명 당첨 · 누적 ${drawnIds.size}명 · 남은 대상자 ${remaining}명`;
       if (n < requested) {
-        infoText = `⚠️ 남은 대상자가 ${eligible.length}명뿐이라 ${n}명만 추첨되었습니다. (${saveResult.round}회차)`;
+        infoText = `⚠️ [${flabel}] 남은 대상자가 ${eligible.length}명뿐이라 ${n}명만 추첨되었습니다. (${saveResult.round}회차)`;
       }
       info.textContent = infoText;
     }
@@ -2267,10 +2496,11 @@ const POLL_INTERVAL_MS = 25000;
     winners.forEach((w, i) => {
       const card = document.createElement('div');
       card.className = 'winner-card' + (i === 0 ? ' rank-1' : '');
+      const stTag = w.isStudent ? '<span class="winner-student-tag">🎓 학생</span>' : '';
       card.innerHTML = `
         <div class="winner-num">${i + 1}</div>
         <div class="winner-info">
-          <div class="winner-name">${escapeHtml(w.name)}</div>
+          <div class="winner-name">${escapeHtml(w.name)}${stTag}</div>
           <div class="winner-meta">${escapeHtml(w.phone)} · ${escapeHtml(w.org)}</div>
         </div>
       `;
@@ -2345,8 +2575,12 @@ const POLL_INTERVAL_MS = 25000;
 
   function updateUI() {
     const count = participants.length;
-    const attendedCount = participants.filter(p => p.attended).length;
-    const remainingCount = participants.filter(p => p.attended && !drawnIds.has(p.id)).length;
+    const attended = participants.filter(p => p.attended);
+    const attendedCount = attended.length;
+    const attendedStudents = attended.filter(p => p.isStudent).length;
+    const attendedNonStudents = attendedCount - attendedStudents;
+    // 현재 추첨 대상 필터에 따른 남은 대상자 수
+    const remainingCount = eligibleByFilter().length;
     $('count-badge').textContent = count;
     $('total-count').textContent = count;
     $('attended-count').textContent = attendedCount;
@@ -2354,10 +2588,12 @@ const POLL_INTERVAL_MS = 25000;
     // 추첨 패널 안내
     const poolInfo = $('draw-pool-info');
     if (poolInfo) {
-      poolInfo.textContent = `출석 ${attendedCount}명 · 누적 당첨 ${drawnIds.size}명 · 남은 대상자 ${remainingCount}명`;
+      poolInfo.textContent =
+        `출석 ${attendedCount}명 (성인 ${attendedNonStudents} · 학생 ${attendedStudents}) · `
+        + `누적 당첨 ${drawnIds.size}명 · [${drawFilterLabel()}] 남은 대상자 ${remainingCount}명`;
     }
 
-    // 슬라이더는 "남은 대상자" 수에 맞춰 최대값 조정
+    // 슬라이더는 현재 필터의 "남은 대상자" 수에 맞춰 최대값 조정
     const slider = $('winner-count');
     const sliderMax = Math.max(1, Math.min(10, remainingCount));
     slider.max = sliderMax;
@@ -2372,42 +2608,7 @@ const POLL_INTERVAL_MS = 25000;
     } else {
       $('list-empty').style.display = 'none';
       $('list-container').style.display = 'block';
-
-      const container = $('participant-list');
-      container.innerHTML = '';
-      participants.forEach((p, i) => {
-        const row = document.createElement('div');
-        row.className = 'participant-row';
-        const attendedBadge = p.attended
-          ? `<span class="attend-badge attended">출석 ${escapeHtml(p.attended)}</span>`
-          : `<span class="attend-badge waiting">미출석</span>`;
-        const wonBadge = drawnIds.has(p.id)
-          ? `<span class="attend-badge won">🏆 당첨</span>`
-          : '';
-        row.innerHTML = `
-          <div class="participant-num">${i + 1}</div>
-          <div class="participant-info">
-            <div class="participant-name">${escapeHtml(p.name)} <span class="participant-org">${escapeHtml(p.org)}</span></div>
-            <div class="participant-meta">${escapeHtml(p.phone)} · 등록 ${p.time}</div>
-          </div>
-          ${wonBadge}
-          ${attendedBadge}
-          <button data-id="${p.id}" class="btn-remove" style="padding:4px 10px; font-size:12px; color:#d85a30;">삭제</button>
-        `;
-        container.appendChild(row);
-      });
-      container.querySelectorAll('.btn-remove').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          if (!confirm('이 초청자를 삭제하시겠습니까?')) return;
-          const id = e.target.dataset.id;
-          const result = await removeParticipant(id);
-          if (result.status === 'ok') {
-            await fetchData();
-          } else {
-            alert('삭제 실패: ' + (result.message || '오류'));
-          }
-        });
-      });
+      renderParticipantList();
     }
 
     // mode=man 검색 탭의 미출석자 목록도 함께 갱신
@@ -2418,8 +2619,136 @@ const POLL_INTERVAL_MS = 25000;
     renderWinnersTab();
   }
 
-  // ===== 당첨자 탭 렌더 (회차별 그룹) =====
-  function renderWinnersTab() {
+  // ===== 초청자 목록 렌더 (검색 · 상태필터 · 점진 렌더링, 1000명 대응) =====
+  let listSearch = '';
+  let listStatus = 'all'; // all | attended | unattended | student
+  const LIST_PAGE = 100;
+  let listRenderLimit = LIST_PAGE;
+  let lastListSig = '';
+
+  function getFilteredParticipants() {
+    let arr = participants;
+    if (listStatus === 'attended') arr = arr.filter(p => p.attended);
+    else if (listStatus === 'unattended') arr = arr.filter(p => !p.attended);
+    else if (listStatus === 'student') arr = arr.filter(p => p.isStudent);
+    if (listSearch) {
+      const q = listSearch.toLowerCase();
+      const qd = listSearch.replace(/\D/g, '');
+      arr = arr.filter(p => {
+        const nameM = String(p.name).toLowerCase().includes(q);
+        const phoneM = qd.length > 0 && String(p.phone).replace(/\D/g, '').includes(qd);
+        const orgM = String(p.org).toLowerCase().includes(q);
+        return nameM || phoneM || orgM;
+      });
+    }
+    return arr;
+  }
+
+  function participantRowHTML(p, idx) {
+    const attendedBadge = p.attended
+      ? '<span class="attend-badge attended">출석 ' + escapeHtml(p.attended) + '</span>'
+      : '<span class="attend-badge waiting">미출석</span>';
+    const studentBadge = p.isStudent
+      ? '<span class="attend-badge student">🎓 학생</span>' : '';
+    const wonBadge = drawnIds.has(p.id)
+      ? '<span class="attend-badge won">🏆 당첨</span>' : '';
+    return '<div class="participant-row">'
+      + '<div class="participant-num">' + (idx + 1) + '</div>'
+      + '<div class="participant-info">'
+      + '<div class="participant-name">' + escapeHtml(p.name)
+      + ' <span class="participant-org">' + escapeHtml(p.org) + '</span></div>'
+      + '<div class="participant-meta">' + escapeHtml(p.phone) + ' · 등록 ' + escapeHtml(p.time) + '</div>'
+      + '</div>'
+      + studentBadge + wonBadge + attendedBadge
+      + '<button data-id="' + escapeHtml(p.id) + '" class="btn-remove" style="padding:4px 10px; font-size:12px; color:#d85a30;">삭제</button>'
+      + '</div>';
+  }
+
+  function renderParticipantList(force) {
+    if (participants.length === 0) return;
+    const container = $('participant-list');
+    const filtered = getFilteredParticipants();
+    const shownCount = Math.min(listRenderLimit, filtered.length);
+
+    // 데이터/검색/필터/표시개수가 그대로면 재렌더 생략 (폴링 성능)
+    const dataKey = participants
+      .map(p => p.id + (p.attended ? 'a' : '') + (p.isStudent ? 's' : '') + (drawnIds.has(p.id) ? 'w' : ''))
+      .join(',');
+    const sig = listStatus + '|' + listSearch + '|' + shownCount + '|' + filtered.length + '|' + dataKey;
+    if (!force && sig === lastListSig) return;
+    lastListSig = sig;
+
+    // 정보줄
+    const info = $('list-info');
+    if (info) {
+      if (listSearch || listStatus !== 'all') {
+        info.textContent = `조건 일치 ${filtered.length}명 중 ${shownCount}명 표시`;
+      } else {
+        info.textContent = `${filtered.length}명 중 ${shownCount}명 표시`;
+      }
+    }
+
+    // 한 번에 문자열로 빌드 (대량 행 성능)
+    let html = '';
+    for (let i = 0; i < shownCount; i++) {
+      html += participantRowHTML(filtered[i], i);
+    }
+    container.innerHTML = html || '<div class="empty-state" style="padding:30px 10px;">검색 결과가 없습니다.</div>';
+
+    // 더 보기 버튼
+    const wrap = $('list-loadmore-wrap');
+    const btn = $('btn-list-loadmore');
+    if (filtered.length > shownCount) {
+      wrap.style.display = 'block';
+      const more = Math.min(LIST_PAGE, filtered.length - shownCount);
+      btn.textContent = `더 보기 (+${more}명 · 남은 ${filtered.length - shownCount}명)`;
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  // 검색 입력
+  $('list-search').addEventListener('input', (e) => {
+    listSearch = e.target.value.trim();
+    listRenderLimit = LIST_PAGE; // 검색 시 처음부터
+    renderParticipantList(true);
+  });
+  // 상태 필터
+  document.querySelectorAll('input[name="list-status"]').forEach(r => {
+    r.addEventListener('change', () => {
+      listStatus = r.value;
+      listRenderLimit = LIST_PAGE;
+      renderParticipantList(true);
+    });
+  });
+  // 더 보기
+  $('btn-list-loadmore').addEventListener('click', () => {
+    listRenderLimit += LIST_PAGE;
+    renderParticipantList(true);
+  });
+  // 삭제 버튼 (이벤트 위임 — 1000행에서도 리스너 1개만 유지)
+  $('participant-list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-remove');
+    if (!btn) return;
+    if (!confirm('이 초청자를 삭제하시겠습니까?')) return;
+    const id = btn.dataset.id;
+    btn.disabled = true;
+    const result = await removeParticipant(id);
+    if (result.status === 'ok') {
+      await fetchData();
+    } else {
+      alert('삭제 실패: ' + (result.message || '오류'));
+      btn.disabled = false;
+    }
+  });
+
+  // ===== 당첨자 탭 렌더 (회차별 그룹 · 접기/펼치기) =====
+  // 펼쳐진 회차 번호 집합 (사용자가 접고 펼친 상태를 폴링 후에도 유지)
+  const expandedRounds = new Set();
+  let winnersInitialized = false; // 최초 1회: 최신 회차만 펼침
+  let lastWinnersSig = '';
+
+  function renderWinnersTab(force) {
     const badge = $('winners-count-badge');
     const totalEl = $('winners-total');
     const roundsEl = $('winners-rounds');
@@ -2435,6 +2764,7 @@ const POLL_INTERVAL_MS = 25000;
       empty.style.display = 'block';
       wrap.style.display = 'none';
       list.innerHTML = '';
+      lastWinnersSig = '';
       return;
     }
 
@@ -2447,47 +2777,86 @@ const POLL_INTERVAL_MS = 25000;
     });
     const rounds = Array.from(byRound.keys()).sort((a, b) => b - a); // 최신 회차가 위로
 
+    // 최초 진입 시 최신 회차만 펼침
+    if (!winnersInitialized && rounds.length > 0) {
+      expandedRounds.add(rounds[0]);
+      winnersInitialized = true;
+    }
+
     totalEl.textContent = total;
     roundsEl.textContent = rounds.length;
     empty.style.display = 'none';
     wrap.style.display = 'block';
 
-    list.innerHTML = '';
+    // 데이터/펼침상태가 그대로면 재렌더 생략 (1000명·다회차 폴링 성능)
+    const sig = total + '|' + rounds.join(',') + '|'
+      + Array.from(expandedRounds).sort((a, b) => a - b).join(',');
+    if (!force && sig === lastWinnersSig) return;
+    lastWinnersSig = sig;
+
+    // 문자열로 한 번에 빌드 (대량 행 성능)
+    let html = '';
     rounds.forEach(round => {
       const winners = byRound.get(round);
-      // 회차 시간은 그룹 내 첫 항목의 time (같은 회차는 같은 저장 시각)
       const time = winners[0] && winners[0].time ? winners[0].time : '';
+      const collapsed = expandedRounds.has(round) ? '' : ' collapsed';
 
-      const group = document.createElement('div');
-      group.className = 'round-group';
-      group.innerHTML = `
-        <div class="round-header">
-          <span class="round-title">${escapeHtml(String(round))}회차</span>
-          <span class="round-meta">${time ? escapeHtml(time) + ' · ' : ''}${winners.length}명 당첨</span>
-        </div>
-        <div class="round-body"></div>
-      `;
-      const body = group.querySelector('.round-body');
+      let rowsHtml = '';
       winners.forEach((w, i) => {
-        const row = document.createElement('div');
-        row.className = 'winner-row' + (i === 0 ? ' rank-1' : '');
-        row.innerHTML = `
-          <div class="winner-rank">${i + 1}</div>
-          <div class="winner-row-info">
-            <div class="winner-row-name">${escapeHtml(w.name)}<span class="winner-row-org">${escapeHtml(w.org || '-')}</span></div>
-            <div class="winner-row-meta">${escapeHtml(w.phone)}</div>
-          </div>
-        `;
-        body.appendChild(row);
+        const stTag = w.isStudent ? '<span class="winner-student-tag">🎓 학생</span>' : '';
+        rowsHtml +=
+          '<div class="winner-row' + (i === 0 ? ' rank-1' : '') + '">'
+          + '<div class="winner-rank">' + (i + 1) + '</div>'
+          + '<div class="winner-row-info">'
+          + '<div class="winner-row-name">' + escapeHtml(w.name) + stTag
+          + '<span class="winner-row-org">' + escapeHtml(w.org || '-') + '</span></div>'
+          + '<div class="winner-row-meta">' + escapeHtml(w.phone) + '</div>'
+          + '</div></div>';
       });
-      list.appendChild(group);
+
+      html +=
+        '<div class="round-group' + collapsed + '" data-round="' + round + '">'
+        + '<div class="round-header" data-round="' + round + '">'
+        + '<span class="round-title">' + escapeHtml(String(round)) + '회차</span>'
+        + '<span class="round-meta">' + (time ? escapeHtml(time) + ' · ' : '') + winners.length + '명 당첨</span>'
+        + '<span class="round-chevron">▼</span>'
+        + '</div>'
+        + '<div class="round-body">' + rowsHtml + '</div>'
+        + '</div>';
     });
+    list.innerHTML = html;
   }
+
+  // 회차 헤더 클릭 → 해당 회차만 토글 (재렌더 없이 클래스만 변경)
+  $('winners-by-round').addEventListener('click', (e) => {
+    const header = e.target.closest('.round-header');
+    if (!header) return;
+    const group = header.closest('.round-group');
+    const round = Number(group.dataset.round);
+    const willCollapse = !group.classList.contains('collapsed');
+    group.classList.toggle('collapsed', willCollapse);
+    if (willCollapse) expandedRounds.delete(round);
+    else expandedRounds.add(round);
+    // sig 갱신해 다음 폴링이 불필요하게 재렌더하지 않도록
+    lastWinnersSig = winnersAll.length + '|'
+      + Array.from(new Set(winnersAll.map(w => w.round || 0))).sort((a, b) => b - a).join(',')
+      + '|' + Array.from(expandedRounds).sort((a, b) => a - b).join(',');
+  });
+
+  // 전체 펼치기 / 접기
+  $('btn-rounds-expand').addEventListener('click', () => {
+    new Set(winnersAll.map(w => w.round || 0)).forEach(r => expandedRounds.add(r));
+    renderWinnersTab(true);
+  });
+  $('btn-rounds-collapse').addEventListener('click', () => {
+    expandedRounds.clear();
+    renderWinnersTab(true);
+  });
 
   // 당첨자 CSV 내보내기
   $('btn-winners-export').addEventListener('click', () => {
     if (winnersAll.length === 0) return;
-    let csv = '회차,순번,이름,연락처,초청자,당첨시간\n';
+    let csv = '회차,순번,이름,연락처,초청자,학생여부,당첨시간\n';
     // 회차 오름차순, 그룹 내 순번
     const byRound = new Map();
     winnersAll.forEach(w => {
@@ -2499,7 +2868,7 @@ const POLL_INTERVAL_MS = 25000;
     rounds.forEach(r => {
       byRound.get(r).forEach((w, i) => {
         // 연락처는 ="..." 형식으로 감싸서 엑셀이 숫자로 자동변환하는 것을 방지
-        csv += `${r},${i + 1},"${w.name}","=""${w.phone}""","${w.org || '-'}","${w.time || ''}"\n`;
+        csv += `${r},${i + 1},"${w.name}","=""${w.phone}""","${w.org || '-'}","${w.isStudent ? '학생' : ''}","${w.time || ''}"\n`;
       });
     });
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
